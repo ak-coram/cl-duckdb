@@ -34,6 +34,7 @@
            #:duckdb-nullmask-data))
 
 (defpackage #:duckdb
+  (:nicknames #:ddb)
   (:use #:cl #:cffi)
   (:export #:open-database
            #:close-database
