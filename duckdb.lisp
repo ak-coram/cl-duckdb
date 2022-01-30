@@ -85,3 +85,65 @@
           ,@body
        (disconnect ,connection-var))))
 
+;;; Queries
+
+(defclass result ()
+  ((connection :initarg :connection)
+   (handle :accessor handle :initarg :handle)
+   (column-names :initarg :column-names)
+   (column-types :initarg :column-types)
+   (column-count :initarg :column-count)
+   (row-count :initarg :row-count)
+   (rows-changed :initarg :rows-changed)
+   (error-message :initarg :error-message)))
+
+(defun make-result (connection p-result)
+  (with-foreign-slots ((duckdb-api:column-count
+                        duckdb-api:row-count
+                        duckdb-api:rows-changed
+                        duckdb-api:error-message)
+                       p-result
+                       (:struct duckdb-api:duckdb-result))
+    (make-instance 'result
+                   :connection connection
+                   :handle p-result
+                   :column-count duckdb-api:column-count
+                   :row-count duckdb-api:row-count
+                   :rows-changed duckdb-api:rows-changed
+                   :error-message
+                   (foreign-string-to-lisp duckdb-api:error-message)
+                   :column-names
+                   (loop :for idx :below duckdb-api:column-count
+                         :collect (duckdb-api:duckdb-column-name p-result
+                                                                 idx))
+                   :column-types
+                   (loop :for idx :below duckdb-api:column-count
+                         :collect (duckdb-api:duckdb-column-type p-result
+                                                                 idx)))))
+
+(defun query (connection query)
+  (with-foreign-object (p-result 'duckdb-api:p-duckdb-result)
+    (with-foreign-string (p-query query)
+      (if (eq (duckdb-api:duckdb-query (handle connection)
+                                       p-query
+                                       p-result)
+              :duckdb-success)
+          (make-result connection p-result)
+          (error 'duckdb-error
+                 :database (database connection)
+                 :connection connection
+                 :error-message (duckdb-api:duckdb-result-error p-result))))))
+
+(defun destroy-result (result)
+  (duckdb-api:duckdb-destroy-result (handle result)))
+
+(defmacro with-query ((result-var connection query) &body body)
+  `(let ((,result-var (query ,connection ,query)))
+     (unwind-protect
+          ,@body
+       (destroy-result ,result-var))))
+
+;; (with-open-database (db)
+;;   (with-open-connection (conn db)
+;;     (with-query (result conn "SELECT 1")
+;;       result)))

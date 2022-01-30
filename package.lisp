@@ -2,7 +2,16 @@
 
 (defpackage #:duckdb-api
   (:use #:cl #:cffi)
-  (:export #:duckdb-database
+  (:export #:duckdb-column
+           #:p-duckdb-column
+           #:duckdb-result
+           #:column-count
+           #:row-count
+           #:rows-changed
+           #:columns
+           #:error-message
+           #:p-duckdb-result
+           #:duckdb-database
            #:duckdb-connection
            #:duckdb-prepared-statement
            #:duckdb-appender
@@ -14,7 +23,12 @@
            #:duckdb-open-ext
            #:duckdb-close
            #:duckdb-connect
-           #:duckdb-disconnect))
+           #:duckdb-disconnect
+           #:duckdb-query
+           #:duckdb-destroy-result
+           #:duckdb-result-error
+           #:duckdb-column-name
+           #:duckdb-column-type))
 
 (defpackage #:duckdb
   (:use #:cl #:cffi)
