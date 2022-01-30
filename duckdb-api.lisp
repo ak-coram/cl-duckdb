@@ -44,6 +44,10 @@
   (:duckdb-varchar)
   (:duckdb-blob))
 
+(defun get-ffi-type (duckdb-type)
+  (ecase duckdb-type
+    (:duckdb-integer :int32)))
+
 (defcstruct duckdb-column
   (data (:pointer :void))
   (nullmask :bool)
@@ -100,5 +104,13 @@
   (col idx))
 
 (defcfun duckdb-column-type duckdb-type
+  (result p-duckdb-result)
+  (col idx))
+
+(defcfun duckdb-column-data (:pointer :void)
+  (result p-duckdb-result)
+  (col idx))
+
+(defcfun duckdb-nullmask-data (:pointer :bool)
   (result p-duckdb-result)
   (col idx))

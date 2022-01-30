@@ -93,7 +93,7 @@
    (column-names :initarg :column-names)
    (column-types :initarg :column-types)
    (column-count :initarg :column-count)
-   (row-count :initarg :row-count)
+   (row-count :accessor row-count :initarg :row-count)
    (rows-changed :initarg :rows-changed)
    (error-message :initarg :error-message)))
 
@@ -115,10 +115,6 @@
                    :column-names
                    (loop :for idx :below duckdb-api:column-count
                          :collect (duckdb-api:duckdb-column-name p-result
-                                                                 idx))
-                   :column-types
-                   (loop :for idx :below duckdb-api:column-count
-                         :collect (duckdb-api:duckdb-column-type p-result
                                                                  idx)))))
 
 (defun query (connection query)
@@ -143,7 +139,24 @@
           ,@body
        (destroy-result ,result-var))))
 
+(defun get-column-values (result column-index)
+  (let* ((p-result (handle result))
+         (p-data (duckdb-api:duckdb-column-data p-result
+                                                column-index))
+         (p-nullmask (duckdb-api:duckdb-nullmask-data p-result
+                                                      column-index))
+         (column-type (duckdb-api:duckdb-column-type p-result
+                                                     column-index)))
+    (loop :for i :below (row-count result)
+          :collect (unless (mem-aref p-nullmask :bool i)
+                     (mem-aref p-data
+                               (duckdb-api:get-ffi-type column-type)
+                               i)))))
+
 ;; (with-open-database (db)
 ;;   (with-open-connection (conn db)
-;;     (with-query (result conn "SELECT 1")
-;;       result)))
+;;     (with-query (result conn (concatenate 'string
+;;                                           "SELECT 12345 AS A UNION "
+;;                                           "SELECT NULL AS A UNION "
+;;                                           "SELECT 54321 AS A"))
+;;       (get-column-values result 0))))

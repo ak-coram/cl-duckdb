@@ -10,6 +10,7 @@
            #:rows-changed
            #:columns
            #:error-message
+           #:get-ffi-type
            #:p-duckdb-result
            #:duckdb-database
            #:duckdb-connection
@@ -28,7 +29,9 @@
            #:duckdb-destroy-result
            #:duckdb-result-error
            #:duckdb-column-name
-           #:duckdb-column-type))
+           #:duckdb-column-type
+           #:duckdb-column-data
+           #:duckdb-nullmask-data))
 
 (defpackage #:duckdb
   (:use #:cl #:cffi)
