@@ -1,4 +1,4 @@
-# cl-duckdb
+# cl-duckdb (WiP)
 
 This is a CFFI wrapper around the DuckDB C API.
 
