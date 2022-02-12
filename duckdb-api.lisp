@@ -46,7 +46,15 @@
 
 (defun get-ffi-type (duckdb-type)
   (ecase duckdb-type
-    (:duckdb-integer :int32)))
+    (:duckdb-boolean :bool)
+    (:duckdb-tinyint :int8)
+    (:duckdb-smallint :int16)
+    (:duckdb-integer :int32)
+    (:duckdb-bigint :int64)
+    (:duckdb-utinyint :uint8)
+    (:duckdb-usmallint :uint16)
+    (:duckdb-uinteger :uint32)
+    (:duckdb-ubigint :uint64)))
 
 (defcstruct duckdb-column)
 

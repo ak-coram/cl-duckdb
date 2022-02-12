@@ -90,9 +90,7 @@
 (defclass result ()
   ((connection :initarg :connection)
    (handle :accessor handle :initarg :handle)
-   (column-names :initarg :column-names)
-   (column-types :initarg :column-types)
-   (column-count :initarg :column-count)
+   (column-count :accessor column-count :initarg :column-count)
    (row-count :accessor row-count :initarg :row-count)
    (rows-changed :initarg :rows-changed)
    (error-message :initarg :error-message)))
@@ -146,10 +144,18 @@
                                (duckdb-api:get-ffi-type column-type)
                                i)))))
 
-;; (with-open-database (db)
-;;   (with-open-connection (conn db)
-;;     (with-query (result conn (concatenate 'string
-;;                                           "SELECT 12345 AS A UNION "
-;;                                           "SELECT NULL AS A UNION "
-;;                                           "SELECT 54321 AS A"))
-;;       (get-column-values result 0))))
+(let ((query (concatenate 'string
+                          "SELECT True::boolean AS A"
+                          ", -12::tinyint AS B"
+                          ", -123::smallint AS C"
+                          ", -1234::integer AS D"
+                          ", -12345::bigint AS E"
+                          ", 12::utinyint AS F"
+                          ", 123::usmallint AS G"
+                          ", 1234::uinteger AS H"
+                          ", 12345::ubigint AS I")))
+  (with-open-database (db)
+    (with-open-connection (conn db)
+      (with-query (result conn query)
+        (loop :for i :below (column-count result)
+              :collect (get-column-values result i))))))
