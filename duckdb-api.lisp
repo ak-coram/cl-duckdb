@@ -54,7 +54,9 @@
     (:duckdb-utinyint :uint8)
     (:duckdb-usmallint :uint16)
     (:duckdb-uinteger :uint32)
-    (:duckdb-ubigint :uint64)))
+    (:duckdb-ubigint :uint64)
+    (:duckdb-float :float)
+    (:duckdb-double :double)))
 
 (defcstruct duckdb-column)
 

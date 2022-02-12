@@ -153,7 +153,9 @@
                           ", 12::utinyint AS F"
                           ", 123::usmallint AS G"
                           ", 1234::uinteger AS H"
-                          ", 12345::ubigint AS I")))
+                          ", 12345::ubigint AS I"
+                          ", 3.14::float AS J"
+                          ", 2.71::double AS K")))
   (with-open-database (db)
     (with-open-connection (conn db)
       (with-query (result conn query)
