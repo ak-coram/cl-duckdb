@@ -144,21 +144,23 @@
                                (duckdb-api:get-ffi-type column-type)
                                i)))))
 
-;; (let ((query (concatenate 'string
-;;                           "SELECT True::boolean AS A"
-;;                           ", -12::tinyint AS B"
-;;                           ", -123::smallint AS C"
-;;                           ", -1234::integer AS D"
-;;                           ", -12345::bigint AS E"
-;;                           ", 12::utinyint AS F"
-;;                           ", 123::usmallint AS G"
-;;                           ", 1234::uinteger AS H"
-;;                           ", 12345::ubigint AS I"
-;;                           ", 3.14::float AS J"
-;;                           ", 2.71::double AS K"
-;;                           ", 'Pálpusztai' AS cheese")))
-;;   (with-open-database (db)
-;;     (with-open-connection (conn db)
-;;       (with-query (result conn query)
-;;         (loop :for i :below (column-count result)
-;;               :collect (get-column-values result i))))))
+#+nil
+(let ((query (concatenate 'string
+                          "SELECT True::boolean AS A"
+                          ", -12::tinyint AS B"
+                          ", -123::smallint AS C"
+                          ", -1234::integer AS D"
+                          ", -12345::bigint AS E"
+                          ", 12::utinyint AS F"
+                          ", 123::usmallint AS G"
+                          ", 1234::uinteger AS H"
+                          ", 12345::ubigint AS I"
+                          ", -18446744073709551629::hugeint AS J"
+                          ", 3.14::float AS K"
+                          ", 2.71::double AS L"
+                          ", 'Pálpusztai' AS cheese")))
+  (with-open-database (db)
+    (with-open-connection (conn db)
+      (with-query (result conn query)
+        (loop :for i :below (column-count result)
+              :collect (get-column-values result i))))))

@@ -23,6 +23,15 @@
 
 (defctype idx :uint64)
 
+(defcstruct (duckdb-hugeint :class duckdb-hugeint-type)
+  (lower :uint64)
+  (upper :int64))
+
+(let ((upper-multiplier (expt 2 64)))
+  (defmethod translate-from-foreign (value (type duckdb-hugeint-type))
+    (with-foreign-slots ((lower upper) value (:struct duckdb-hugeint))
+      (+ (* upper upper-multiplier) lower))))
+
 (defcenum duckdb-type
   (:duckdb-invalid-type 0)
   (:duckdb-boolean)
@@ -57,7 +66,8 @@
     (:duckdb-ubigint :uint64)
     (:duckdb-float :float)
     (:duckdb-double :double)
-    (:duckdb-varchar :string)))
+    (:duckdb-varchar :string)
+    (:duckdb-hugeint '(:struct duckdb-hugeint))))
 
 (defcstruct duckdb-column)
 
