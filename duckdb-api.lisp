@@ -56,7 +56,8 @@
     (:duckdb-uinteger :uint32)
     (:duckdb-ubigint :uint64)
     (:duckdb-float :float)
-    (:duckdb-double :double)))
+    (:duckdb-double :double)
+    (:duckdb-varchar :string)))
 
 (defcstruct duckdb-column)
 
