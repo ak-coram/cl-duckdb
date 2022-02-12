@@ -27,10 +27,9 @@
   (lower :uint64)
   (upper :int64))
 
-(let ((upper-multiplier (expt 2 64)))
-  (defmethod translate-from-foreign (value (type duckdb-hugeint-type))
-    (with-foreign-slots ((lower upper) value (:struct duckdb-hugeint))
-      (+ (* upper upper-multiplier) lower))))
+(defmethod translate-from-foreign (value (type duckdb-hugeint-type))
+  (with-foreign-slots ((lower upper) value (:struct duckdb-hugeint))
+    (logior (ash upper 64) lower)))
 
 (defcenum duckdb-type
   (:duckdb-invalid-type 0)
