@@ -5,11 +5,6 @@
   (:export #:duckdb-column
            #:p-duckdb-column
            #:duckdb-result
-           #:column-count
-           #:row-count
-           #:rows-changed
-           #:columns
-           #:error-message
            #:get-ffi-type
            #:p-duckdb-result
            #:duckdb-database
@@ -27,6 +22,9 @@
            #:duckdb-disconnect
            #:duckdb-query
            #:duckdb-destroy-result
+           #:duckdb-column-count
+           #:duckdb-row-count
+           #:duckdb-rows-changed
            #:duckdb-result-error
            #:duckdb-column-name
            #:duckdb-column-type

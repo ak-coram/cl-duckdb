@@ -98,24 +98,17 @@
    (error-message :initarg :error-message)))
 
 (defun make-result (connection p-result)
-  (with-foreign-slots ((duckdb-api:column-count
-                        duckdb-api:row-count
-                        duckdb-api:rows-changed
-                        duckdb-api:error-message)
-                       p-result
-                       (:struct duckdb-api:duckdb-result))
+  (let ((column-count (duckdb-api:duckdb-column-count p-result))
+        (row-count (duckdb-api:duckdb-row-count p-result))
+        (rows-changed (duckdb-api:duckdb-rows-changed p-result))
+        (error-message (duckdb-api:duckdb-result-error p-result)))
     (make-instance 'result
                    :connection connection
                    :handle p-result
-                   :column-count duckdb-api:column-count
-                   :row-count duckdb-api:row-count
-                   :rows-changed duckdb-api:rows-changed
-                   :error-message
-                   (foreign-string-to-lisp duckdb-api:error-message)
-                   :column-names
-                   (loop :for idx :below duckdb-api:column-count
-                         :collect (duckdb-api:duckdb-column-name p-result
-                                                                 idx)))))
+                   :column-count column-count
+                   :row-count row-count
+                   :rows-changed rows-changed
+                   :error-message error-message)))
 
 (defun query (connection query)
   (with-foreign-object (p-result 'duckdb-api:p-duckdb-result)

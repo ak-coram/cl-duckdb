@@ -48,22 +48,12 @@
   (ecase duckdb-type
     (:duckdb-integer :int32)))
 
-(defcstruct duckdb-column
-  (data (:pointer :void))
-  (nullmask :bool)
-  (type duckdb-type)
-  (name :string)
-  (internal-data (:pointer :void)))
+(defcstruct duckdb-column)
 
 (defctype p-duckdb-column
   (:pointer (:struct duckdb-column)))
 
-(defcstruct duckdb-result
-  (column-count idx)
-  (row-count idx)
-  (rows-changed idx)
-  (columns p-duckdb-column)
-  (error-message (:pointer :string)))
+(defcstruct duckdb-result)
 
 (defctype p-duckdb-result
   (:pointer (:struct duckdb-result)))
@@ -94,6 +84,15 @@
   (out-result (:pointer (:struct duckdb-result))))
 
 (defcfun duckdb-destroy-result :void
+  (result p-duckdb-result))
+
+(defcfun duckdb-column-count idx
+  (result p-duckdb-result))
+
+(defcfun duckdb-row-count idx
+  (result p-duckdb-result))
+
+(defcfun duckdb-rows-changed idx
   (result p-duckdb-result))
 
 (defcfun duckdb-result-error :string
