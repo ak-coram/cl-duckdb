@@ -2,11 +2,9 @@
 
 (defpackage #:duckdb-api
   (:use #:cl #:cffi)
-  (:export #:duckdb-column
-           #:p-duckdb-column
-           #:duckdb-result
-           #:get-ffi-type
+  (:export #:get-ffi-type
            #:p-duckdb-result
+           #:p-duckdb-column
            #:duckdb-database
            #:duckdb-connection
            #:duckdb-prepared-statement

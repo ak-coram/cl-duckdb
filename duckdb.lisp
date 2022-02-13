@@ -159,7 +159,14 @@
                           ", 3.14::float AS K"
                           ", 2.71::double AS L"
                           ", 'Pálpusztai' AS cheese"
-                          ", '\\xAAAB'::blob AS bleb")))
+                          ", '\\xAAAB'::blob AS bleb"
+                          ", current_date AS current_date"
+                          ", current_time AS current_time"
+                          ", now() AS current_typestamp"
+                          ", INTERVAL 24 HOURS "
+                          "+ INTERVAL 2 MINUTES "
+                          "+ INTERVAL 55 SECONDS AS i1"
+                          ", INTERVAL 6 MONTHS AS i2")))
   (with-open-database (db)
     (with-open-connection (conn db)
       (with-query (result conn query)
