@@ -31,6 +31,17 @@
   (with-foreign-slots ((lower upper) value (:struct duckdb-hugeint))
     (logior (ash upper 64) lower)))
 
+(defcstruct (duckdb-blob :class duckdb-blob-type)
+  (data (:pointer :void))
+  (size idx))
+
+(defmethod translate-from-foreign (value (type duckdb-blob-type))
+  (with-foreign-slots ((data size) value (:struct duckdb-blob))
+    (loop :with result := (make-array size :element-type '(unsigned-byte 8))
+          :for i :below size
+          :do (setf (aref result i) (mem-ref data :uint8 i))
+          :finally (return result))))
+
 (defcenum duckdb-type
   (:duckdb-invalid-type 0)
   (:duckdb-boolean)
@@ -66,7 +77,8 @@
     (:duckdb-float :float)
     (:duckdb-double :double)
     (:duckdb-varchar :string)
-    (:duckdb-hugeint '(:struct duckdb-hugeint))))
+    (:duckdb-hugeint '(:struct duckdb-hugeint))
+    (:duckdb-blob '(:struct duckdb-blob))))
 
 (defcstruct duckdb-column)
 

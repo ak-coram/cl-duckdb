@@ -158,7 +158,8 @@
                           ", -18446744073709551629::hugeint AS J"
                           ", 3.14::float AS K"
                           ", 2.71::double AS L"
-                          ", 'Pálpusztai' AS cheese")))
+                          ", 'Pálpusztai' AS cheese"
+                          ", '\\xAAAB'::blob AS bleb")))
   (with-open-database (db)
     (with-open-connection (conn db)
       (with-query (result conn query)
