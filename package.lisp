@@ -28,7 +28,16 @@
            #:duckdb-column-type
            #:duckdb-column-data
            #:duckdb-nullmask-data
-           #:duckdb-p-result-chunk-count))
+           #:duckdb-p-result-chunk-count
+           #:duckdb-vector-get-data
+           #:duckdb-vector-get-validity
+           #:duckdb-data-chunk-get-column-count
+           #:duckdb-data-chunk-get-size
+           #:duckdb-data-chunk-get-vector
+           #:result-chunk-count
+           #:result-get-chunk
+           #:duckdb-validity-row-is-valid
+           #:get-vector-type))
 
 (defpackage #:duckdb
   (:nicknames #:ddb)

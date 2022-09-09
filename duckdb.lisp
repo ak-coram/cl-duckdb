@@ -136,25 +136,25 @@
                                i)))))
 
 (defun get-values (chunk-size vector)
-  (let ((vector-type (duckdb-api:get-ffi-type (duckdb-api::get-vector-type vector)))
-        (p-data (duckdb-api::duckdb-vector-get-data vector))
-        (validity (duckdb-api::duckdb-vector-get-validity vector)))
+  (let ((vector-type (duckdb-api:get-ffi-type (duckdb-api:get-vector-type vector)))
+        (p-data (duckdb-api:duckdb-vector-get-data vector))
+        (validity (duckdb-api:duckdb-vector-get-validity vector)))
     (loop :for i :below chunk-size
-          :collect (when (duckdb-api::duckdb-validity-row-is-valid validity i)
+          :collect (when (duckdb-api:duckdb-validity-row-is-valid validity i)
                      (mem-aref p-data vector-type i)))))
 
 (defun get-vectors (chunk)
-  (let ((column-count (duckdb-api::duckdb-data-chunk-get-column-count chunk))
-        (chunk-size (duckdb-api::duckdb-data-chunk-get-size chunk)))
+  (let ((column-count (duckdb-api:duckdb-data-chunk-get-column-count chunk))
+        (chunk-size (duckdb-api:duckdb-data-chunk-get-size chunk)))
     (loop :for column-index :below column-count
-          :for vector := (duckdb-api::duckdb-data-chunk-get-vector chunk column-index)
+          :for vector := (duckdb-api:duckdb-data-chunk-get-vector chunk column-index)
           :collect (get-values chunk-size vector))))
 
 (defun get-chunks (result)
   (let* ((p-result (handle result))
-         (chunk-count (duckdb-api::result-chunk-count p-result)))
+         (chunk-count (duckdb-api:result-chunk-count p-result)))
     (loop :for chunk-index :below chunk-count
-          :for chunk := (duckdb-api::result-get-chunk p-result chunk-index)
+          :for chunk := (duckdb-api:result-get-chunk p-result chunk-index)
           :collect (get-vectors chunk))))
 
 #+nil
@@ -181,7 +181,8 @@
                           ", INTERVAL 24 HOURS "
                           "+ INTERVAL 2 MINUTES "
                           "+ INTERVAL 55 SECONDS AS i1"
-                          ", INTERVAL 6 MONTHS AS i2")))
+                          ", INTERVAL 6 MONTHS AS i2"
+                          ", NULL AS null")))
   (with-open-database (db)
     (with-open-connection (conn db)
       (with-query (result conn query)
