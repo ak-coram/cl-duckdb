@@ -2,6 +2,35 @@
 
 This is a CFFI wrapper around the [[https://duckdb.org/][DuckDB]] C API.
 
+** Roadmap
+
+- [-] Support for querying built-in general-purpose types
+  - [X] VARCHAR
+  - [X] BOOLEAN
+  - [X] TINYINT
+  - [X] SMALLINT
+  - [X] INTEGER
+  - [X] BIGINT
+  - [X] HUGEINT
+  - [X] UTINYINT
+  - [X] USMALLINT
+  - [X] UINTEGER
+  - [X] UBIGINT
+  - [X] REAL (FLOAT)
+  - [X] DOUBLE
+  - [X] BLOB
+  - [X] DATE
+  - [ ] DECIMAL(s, p)
+  - [X] TIMESTAMP
+  - [X] TIMESTAMP WITH TIME ZONE
+  - [X] INTERVAL
+  - [X] TIME
+  - [ ] UUID
+- [ ] Support for binding built-in general-purpose types
+- [ ] Support for querying nested / composite types
+- [ ] Support for binding nested / composite types
+- [ ] ...
+
 ** License
 
 Released under the MIT License, same as DuckDB.
