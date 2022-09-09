@@ -27,7 +27,8 @@
            #:duckdb-column-name
            #:duckdb-column-type
            #:duckdb-column-data
-           #:duckdb-nullmask-data))
+           #:duckdb-nullmask-data
+           #:duckdb-p-result-chunk-count))
 
 (defpackage #:duckdb
   (:nicknames #:ddb)

@@ -16,12 +16,32 @@
 (defctype duckdb-arrow (:pointer :void))
 (defctype duckdb-arrow-schema (:pointer :void))
 (defctype duckdb-arrow-array (:pointer :void))
+(defctype duckdb-logical-type (:pointer :void))
+(defctype duckdb-data-chunk (:pointer :void))
+(defctype duckdb-vector (:pointer :void))
+(defctype duckdb-value (:pointer :void))
 
 (defcenum duckdb-state
   (:duckdb-success 0)
   (:duckdb-error 1))
 
 (defctype idx :uint64)
+(defctype p-validity (:pointer :uint64))
+
+(defvar *inline-length* 12)
+
+(defcstruct (duckdb-string :class duckdb-string-type)
+  (length :uint32)
+  (data :uint8 :count 12))
+
+(defun get-base-pointer (length data)
+  (if (<= length *inline-length*)
+      data
+      (mem-ref data '(:pointer :uint8) 4)))
+
+(defmethod translate-from-foreign (value (type duckdb-string-type))
+  (with-foreign-slots ((length data) value (:struct duckdb-string))
+    (foreign-string-to-lisp (get-base-pointer length data) :count length)))
 
 (defcstruct (duckdb-hugeint :class duckdb-hugeint-type)
   (lower :uint64)
@@ -32,15 +52,16 @@
     (logior (ash upper 64) lower)))
 
 (defcstruct (duckdb-blob :class duckdb-blob-type)
-  (data (:pointer :void))
-  (size idx))
+  (length :uint32)
+  (data :uint8 :count 12))
 
 (defmethod translate-from-foreign (value (type duckdb-blob-type))
-  (with-foreign-slots ((data size) value (:struct duckdb-blob))
-    (loop :with result := (make-array size :element-type '(unsigned-byte 8))
-          :for i :below size
-          :do (setf (aref result i) (mem-ref data :uint8 i))
-          :finally (return result))))
+  (with-foreign-slots ((length data) value (:struct duckdb-blob))
+    (let ((p-base (get-base-pointer length data)))
+      (loop :with result := (make-array length :element-type '(unsigned-byte 8))
+            :for i :below length
+            :do (setf (aref result i) (mem-ref p-base :uint8 i))
+            :finally (return result)))))
 
 (defcstruct (duckdb-date :class duckdb-date-type)
   (days :int32))
@@ -107,7 +128,7 @@
     (:duckdb-ubigint :uint64)
     (:duckdb-float :float)
     (:duckdb-double :double)
-    (:duckdb-varchar :string)
+    (:duckdb-varchar '(:struct duckdb-string))
     (:duckdb-hugeint '(:struct duckdb-hugeint))
     (:duckdb-blob '(:struct duckdb-blob))
     (:duckdb-date '(:struct duckdb-date))
@@ -118,12 +139,18 @@
 (defcstruct duckdb-column)
 
 (defctype p-duckdb-column
-  (:pointer (:struct duckdb-column)))
+    (:pointer (:struct duckdb-column)))
 
-(defcstruct duckdb-result)
+(defcstruct (duckdb-result)
+  (__deprecated-column-count idx)
+  (__deprecated-row-count idx)
+  (__deprecated-rows-changed idx)
+  (__deprecated-deprecated-columns p-duckdb-column)
+  (__deprecated-error-message (:pointer :string))
+  (internal-data (:pointer :void)))
 
 (defctype p-duckdb-result
-  (:pointer (:struct duckdb-result)))
+    (:pointer (:struct duckdb-result)))
 
 (defcfun duckdb-open duckdb-state
   (path :string)
@@ -180,3 +207,51 @@
 (defcfun duckdb-nullmask-data (:pointer :bool)
   (result p-duckdb-result)
   (col idx))
+
+(defcfun duckdb-result-chunk-count idx
+  (result (:struct duckdb-result)))
+
+(defun result-chunk-count (p-result)
+  (duckdb-result-chunk-count (mem-ref p-result '(:struct duckdb-result))))
+
+(defcfun duckdb-result-get-chunk (duckdb-data-chunk)
+  (result (:struct duckdb-result))
+  (chunk-index idx))
+
+(defun result-get-chunk (p-result i)
+  (duckdb-result-get-chunk (mem-ref p-result '(:struct duckdb-result)) i))
+
+(defcfun duckdb-data-chunk-get-column-count (idx)
+  (chunk duckdb-data-chunk))
+
+(defcfun duckdb-data-chunk-get-vector (duckdb-vector)
+  (chunk duckdb-data-chunk)
+  (col-idx idx))
+
+(defcfun duckdb-data-chunk-get-size (idx)
+  (chunk duckdb-data-chunk))
+
+(defcfun duckdb-vector-size (idx))
+
+(defcfun duckdb-vector-get-column-type (duckdb-logical-type)
+  (vector duckdb-vector))
+
+(defcfun duckdb-get-type-id (duckdb-type)
+  (type duckdb-logical-type))
+
+(defun get-vector-type (vector)
+  (duckdb-get-type-id (duckdb-vector-get-column-type vector)))
+
+(defcfun duckdb-vector-get-data (:pointer :void)
+  (vector duckdb-vector))
+
+(defcfun duckdb-vector-get-validity p-validity
+  (vector duckdb-vector))
+
+(defcfun duckdb-vector-get-size (idx)
+  (vector duckdb-vector))
+
+(defcfun duckdb-validity-row-is-valid (:bool)
+  (validity p-validity)
+  (row idx))
+

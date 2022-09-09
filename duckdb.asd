@@ -7,6 +7,7 @@
   :version "0.0.1"
   :serial t
   :depends-on (#:cffi
+               #:cffi-libffi
                #:local-time
                #:local-time-duration
                #:periods)

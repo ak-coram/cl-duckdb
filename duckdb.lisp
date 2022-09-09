@@ -11,7 +11,10 @@
    (appender :initarg :appender)
    (arrow :initarg :arrow)
    (error-message :initarg :error-message
-                  :accessor error-message)))
+                  :accessor error-message))
+  (:report (lambda (condition stream)
+             (format stream "~A."
+                     (error-message condition)))))
 
 ;;; Databases
 
@@ -89,24 +92,12 @@
 
 (defclass result ()
   ((connection :initarg :connection)
-   (handle :accessor handle :initarg :handle)
-   (column-count :accessor column-count :initarg :column-count)
-   (row-count :accessor row-count :initarg :row-count)
-   (rows-changed :initarg :rows-changed)
-   (error-message :initarg :error-message)))
+   (handle :accessor handle :initarg :handle)))
 
 (defun make-result (connection p-result)
-  (let ((column-count (duckdb-api:duckdb-column-count p-result))
-        (row-count (duckdb-api:duckdb-row-count p-result))
-        (rows-changed (duckdb-api:duckdb-rows-changed p-result))
-        (error-message (duckdb-api:duckdb-result-error p-result)))
-    (make-instance 'result
-                   :connection connection
-                   :handle p-result
-                   :column-count column-count
-                   :row-count row-count
-                   :rows-changed rows-changed
-                   :error-message error-message)))
+  (make-instance 'result
+                 :connection connection
+                 :handle p-result))
 
 (defun query (connection query)
   (with-foreign-object (p-result 'duckdb-api:p-duckdb-result)
@@ -144,6 +135,28 @@
                                (duckdb-api:get-ffi-type column-type)
                                i)))))
 
+(defun get-values (chunk-size vector)
+  (let ((vector-type (duckdb-api:get-ffi-type (duckdb-api::get-vector-type vector)))
+        (p-data (duckdb-api::duckdb-vector-get-data vector))
+        (validity (duckdb-api::duckdb-vector-get-validity vector)))
+    (loop :for i :below chunk-size
+          :collect (when (duckdb-api::duckdb-validity-row-is-valid validity i)
+                     (mem-aref p-data vector-type i)))))
+
+(defun get-vectors (chunk)
+  (let ((column-count (duckdb-api::duckdb-data-chunk-get-column-count chunk))
+        (chunk-size (duckdb-api::duckdb-data-chunk-get-size chunk)))
+    (loop :for column-index :below column-count
+          :for vector := (duckdb-api::duckdb-data-chunk-get-vector chunk column-index)
+          :collect (get-values chunk-size vector))))
+
+(defun get-chunks (result)
+  (let* ((p-result (handle result))
+         (chunk-count (duckdb-api::result-chunk-count p-result)))
+    (loop :for chunk-index :below chunk-count
+          :for chunk := (duckdb-api::result-get-chunk p-result chunk-index)
+          :collect (get-vectors chunk))))
+
 #+nil
 (let ((query (concatenate 'string
                           "SELECT True::boolean AS A"
@@ -158,8 +171,10 @@
                           ", -18446744073709551629::hugeint AS J"
                           ", 3.14::float AS K"
                           ", 2.71::double AS L"
-                          ", 'Pálpusztai' AS cheese"
-                          ", '\\xAAAB'::blob AS bleb"
+                          ", VERSION() AS an_inline_string"
+                          ", 'A pálpusztai egy finom sajt.'::text AS not_an_inline_string"
+                          ", '\\xFF\\x00'::blob AS an_inline_blob"
+                          ", ENCODE('바람 부는 대로, 물결 치는 대로')::blob AS not_an_inline_blob"
                           ", current_date AS current_date"
                           ", current_time AS current_time"
                           ", now() AS current_typestamp"
@@ -170,5 +185,4 @@
   (with-open-database (db)
     (with-open-connection (conn db)
       (with-query (result conn query)
-        (loop :for i :below (column-count result)
-              :collect (get-column-values result i))))))
+        (get-chunks result)))))
