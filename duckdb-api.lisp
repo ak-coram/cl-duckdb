@@ -51,6 +51,27 @@
   (with-foreign-slots ((lower upper) value (:struct duckdb-hugeint))
     (logior (ash upper 64) lower)))
 
+(defcstruct (duckdb-uuid :class duckdb-uuid-type)
+  (lower :uint64)
+  (upper :int64))
+
+(defmethod translate-from-foreign (value (type duckdb-uuid-type))
+  (with-foreign-slots ((lower upper) value (:struct duckdb-uuid))
+    (let ((upper (logxor upper (ash 1 63))))
+      ;; (format nil "~(~8,'0x-~4,'0x-~4,'0x-~4,'0x-~12,'0x~)"
+      ;;             (ldb (byte 32 32) upper)
+      ;;             (ldb (byte 16 16) upper)
+      ;;             (ldb (byte 16 0) upper)
+      ;;             (ldb (byte 16 48) lower)
+      ;;             (ldb (byte 48 0) lower))
+      (make-instance 'uuid:uuid
+                     :time-low (ldb (byte 32 32) upper)
+                     :time-mid (ldb (byte 16 16) upper)
+                     :time-high (ldb (byte 16 0) upper)
+                     :clock-seq-var (ldb (byte 8 56) lower)
+                     :clock-seq-low (ldb (byte 8 48) lower)
+                     :node (ldb (byte 48 0) lower)))))
+
 (defcstruct (duckdb-blob :class duckdb-blob-type)
   (length :uint32)
   (data :uint8 :count 12))
@@ -113,7 +134,17 @@
   (:duckdb-interval)
   (:duckdb-hugeint)
   (:duckdb-varchar)
-  (:duckdb-blob))
+  (:duckdb-blob)
+  (:duckdb-decimal)
+  (:duckdb-timestamp-s)
+  (:duckdb-timestamp-ms)
+  (:duckdb-timestamp-ns)
+  (:duckdb-enum)
+  (:duckdb-list)
+  (:duckdb-struct)
+  (:duckdb-map)
+  (:duckdb-uuid)
+  (:duckdb-json))
 
 (defun get-ffi-type (duckdb-type)
   (ecase duckdb-type
@@ -134,7 +165,11 @@
     (:duckdb-date '(:struct duckdb-date))
     (:duckdb-time '(:struct duckdb-time))
     (:duckdb-timestamp '(:struct duckdb-timestamp))
-    (:duckdb-interval '(:struct duckdb-interval))))
+    (:duckdb-timestamp-s '(:struct duckdb-timestamp))
+    (:duckdb-timestamp-ms '(:struct duckdb-timestamp))
+    (:duckdb-timestamp-ns '(:struct duckdb-timestamp))
+    (:duckdb-interval '(:struct duckdb-interval))
+    (:duckdb-uuid '(:struct duckdb-uuid))))
 
 (defcstruct duckdb-column)
 

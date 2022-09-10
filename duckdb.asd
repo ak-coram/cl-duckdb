@@ -10,7 +10,8 @@
                #:cffi-libffi
                #:local-time
                #:local-time-duration
-               #:periods)
+               #:periods
+               #:uuid)
   :components ((:file "package")
                (:file "duckdb-api")
                (:file "duckdb")))

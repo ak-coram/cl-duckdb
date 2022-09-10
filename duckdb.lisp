@@ -175,6 +175,7 @@
                            ", current_time AS current_time"
                            ", now()::timestamp AS current_typestamp"
                            ", 'epoch'::timestamptz AS epoch_tz"
+                           ", gen_random_uuid() AS uuid"
                            ", INTERVAL 24 HOURS "
                            "+ INTERVAL 2 MINUTES "
                            "+ INTERVAL 55 SECONDS AS i1"
