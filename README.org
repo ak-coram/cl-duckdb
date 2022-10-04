@@ -1,5 +1,11 @@
 * cl-duckdb (WiP)
 
+#+begin_html
+<a href="https://github.com/ak-coram/cl-duckdb/actions">
+<img alt="Build Status" src="https://github.com/ak-coram/cl-duckdb/workflows/CI/badge.svg" />
+</a>
+#+end_html
+
 This is a CFFI wrapper around the [[https://duckdb.org/][DuckDB]] C API.
 
 ** Roadmap
