@@ -47,4 +47,6 @@
            #:with-open-database
            #:connect
            #:disconnect
-           #:with-open-connection))
+           #:with-open-connection
+           #:with-query
+           #:translate-result))

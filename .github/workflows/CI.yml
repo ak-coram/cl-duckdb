@@ -29,4 +29,4 @@ jobs:
       - name: Load cl-duckdb
         run: |
           ln -s $GITHUB_WORKSPACE ~/quicklisp/local-projects/
-          sbcl --load ~/quicklisp/setup.lisp --eval '(progn (ql:quickload :duckdb) (quit))'
+          sbcl --load ~/quicklisp/setup.lisp --eval '(progn (ql:quickload :duckdb/test) (asdf:test-system :duckdb) (quit))'
