@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install sbcl
+        run: sudo apt-get install sbcl
+
+      - name: Install quicklisp
+        run: |
+          wget https://beta.quicklisp.org/quicklisp.lisp
+          sbcl --load quicklisp.lisp --eval '(progn (quicklisp-quickstart:install) (quit))'
+
+      - name: Install duckdb
+        run: |
+          wget https://github.com/duckdb/duckdb/releases/download/v0.5.1/libduckdb-linux-amd64.zip
+          sudo unzip libduckdb-linux-amd64.zip -d /usr/lib/
+          
+      - name: Load cl-duckdb
+        run: |
+          ln -s $GITHUB_WORKSPACE ~/quicklisp/local-projects/
+          sbcl --load ~/quicklisp/setup.lisp --eval '(progn (ql:quickload :duckdb) (quit))'
