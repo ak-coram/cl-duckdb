@@ -19,6 +19,7 @@
 
 (asdf:defsystem #:duckdb/test
   :depends-on (#:duckdb
-               #:fiveam)
+               #:fiveam
+               #:str)
   :components ((:file "duckdb-test"))
   :perform (test-op (o c) (symbol-call :fiveam '#:run! :duckdb)))
