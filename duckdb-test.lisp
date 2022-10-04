@@ -83,3 +83,6 @@
                   "FROM (SELECT gen_random_uuid() AS uuid)")
       (a b)
     (is (uuid:uuid= a (uuid:make-uuid-from-string b)))))
+
+(test this-fails
+  (is-true nil))
