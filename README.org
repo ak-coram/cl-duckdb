@@ -8,6 +8,33 @@
 
 This is a CFFI wrapper around the [[https://duckdb.org/][DuckDB]] C API.
 
+** Development setup
+
+Currently only Linux and BSDs have been tested.
+
+1. Install [[https://sbcl.org/][SBCL]], [[https://www.quicklisp.org/][Quicklisp]], [[https://sourceware.org/libffi/][libffi]] and of course [[https://duckdb.org/][DuckDB]].
+2. Clone this repository and add it as a local Quicklisp project, for example:
+
+#+begin_src sh
+  git clone git@github.com:ak-coram/cl-duckdb.git ~/Projects/cl-duckdb
+  ln -s ~/Projects/cl-duckdb ~/quicklisp/local-projects/cl-duckdb
+#+end_src
+
+3. Start your favored REPL (e.g. src_sh[:exports code]{sbcl}) and load the library
+   using Quicklisp: src_lisp[:exports code]{(ql:quickload :duckdb)}
+
+*** Running tests
+
+1. Load the tests via Quicklisp: src_lisp[:exports code]{(ql:quickload :duckdb/test)}
+2. Use [[https://asdf.common-lisp.dev/][ASDF]] or [[https://fiveam.common-lisp.dev/][FiveAM]] to run the tests:
+
+#+begin_src lisp
+  ;; Using ASDF:
+  (asdf:test-system :duckdb)
+  ;; Using FiveAM directly:
+  (fiveam:run! :duckdb)
+#+end_src
+
 ** Roadmap
 
 - [-] Support for querying built-in general-purpose types
