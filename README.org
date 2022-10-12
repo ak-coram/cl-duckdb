@@ -1,9 +1,16 @@
 * cl-duckdb (WiP)
 
 #+begin_html
-<a href="https://github.com/ak-coram/cl-duckdb/actions">
-<img alt="Build Status" src="https://github.com/ak-coram/cl-duckdb/workflows/CI/badge.svg" />
-</a>
+<div align="center">
+  <a href="https://upload.wikimedia.org/wikipedia/commons/4/43/Pair_of_mandarin_ducks.jpg" target="_blank">
+    <img alt="鴛鴦戲水" title="鴛鴦戲水" src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/Pair_of_mandarin_ducks.jpg/440px-Pair_of_mandarin_ducks.jpg" width="220" height="165">
+  </a>
+</div>
+<p align="center">
+  <a href="https://github.com/ak-coram/cl-duckdb/actions">
+    <img alt="Build Status" src="https://github.com/ak-coram/cl-duckdb/workflows/CI/badge.svg" />
+  </a>
+</p>
 #+end_html
 
 This is a CFFI wrapper around the [[https://duckdb.org/][DuckDB]] C API.
@@ -76,5 +83,5 @@ Currently only Linux and BSDs have been tested.
 
 ** License
 
-Released under the MIT License, same as DuckDB.
-
+- Released under the MIT License, same as DuckDB.
+- [[https://en.wikipedia.org/wiki/File:Pair_of_mandarin_ducks.jpg][Source]] for README photo
