@@ -106,3 +106,14 @@
          (local-time:unix-to-timestamp 8640000000)
          b))))
 
+(test query-timestamp
+  (test-query (str:concat "SELECT '1970-01-01 23:59:59'::timestamp AS a"
+                          ", '2243-10-16 23:59:59'::timestamp AS b")
+      (a b)
+    (is (local-time:timestamp=
+         (local-time:unix-to-timestamp 86399)
+         a))
+    (is (local-time:timestamp=
+         (local-time:unix-to-timestamp 8639999999)
+         b))))
+
