@@ -1,4 +1,4 @@
-;;;; cl-duckdb.lisp
+;;;; duckdb-api.lisp
 
 (in-package #:duckdb-api)
 
@@ -274,8 +274,24 @@
 (defcfun duckdb-get-type-id (duckdb-type)
   (type duckdb-logical-type))
 
+(defcfun duckdb-decimal-internal-type duckdb-type
+  (type duckdb-logical-type))
+
+(defcfun duckdb-decimal-width :uint8
+  (type duckdb-logical-type))
+
+(defcfun duckdb-decimal-scale :uint8
+  (type duckdb-logical-type))
+
 (defun get-vector-type (vector)
-  (duckdb-get-type-id (duckdb-vector-get-column-type vector)))
+  (let* ((logical-type (duckdb-vector-get-column-type vector))
+         (type (duckdb-get-type-id logical-type))
+         (is-decimal (eql type :duckdb-decimal)))
+    (values type
+            (when is-decimal
+              (duckdb-decimal-internal-type logical-type))
+            (when is-decimal
+              (duckdb-decimal-scale logical-type)))))
 
 (defcfun duckdb-vector-get-data (:pointer :void)
   (vector duckdb-vector))
@@ -283,10 +299,9 @@
 (defcfun duckdb-vector-get-validity p-validity
   (vector duckdb-vector))
 
-(defcfun duckdb-vector-get-size (idx)
+(defcfun duckdb-vector-get-size idx
   (vector duckdb-vector))
 
-(defcfun duckdb-validity-row-is-valid (:bool)
+(defcfun duckdb-validity-row-is-valid :bool
   (validity p-validity)
   (row idx))
-

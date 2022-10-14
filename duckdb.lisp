@@ -122,15 +122,20 @@
        (destroy-result ,result-var))))
 
 (defun translate-vector (chunk-size vector results)
-  (let ((vector-type (duckdb-api:get-ffi-type (duckdb-api:get-vector-type vector)))
-        (p-data (duckdb-api:duckdb-vector-get-data vector))
-        (validity (duckdb-api:duckdb-vector-get-validity vector)))
-    (loop :for i :below chunk-size
-          :do (vector-push-extend
-               (when (duckdb-api:duckdb-validity-row-is-valid validity i)
-                 (mem-aref p-data vector-type i))
-               results
-               chunk-size))))
+  (multiple-value-bind (vector-type internal-type decimal-scale)
+      (duckdb-api:get-vector-type vector)
+    (let* ((vector-ffi-type (duckdb-api:get-ffi-type (or internal-type vector-type)))
+           (p-data (duckdb-api:duckdb-vector-get-data vector))
+           (validity (duckdb-api:duckdb-vector-get-validity vector)))
+      (loop :for i :below chunk-size
+            :for value := (when (duckdb-api:duckdb-validity-row-is-valid validity i)
+                            (let ((v (mem-aref p-data vector-ffi-type i)))
+                              (if (eql vector-type :duckdb-decimal)
+                                  (* v (expt 10 (- decimal-scale)))
+                                  v)))
+            :do (vector-push-extend value
+                                    results
+                                    chunk-size)))))
 
 (defun translate-chunk (result-alist chunk)
   (let ((column-count (duckdb-api:duckdb-data-chunk-get-column-count chunk))
@@ -155,34 +160,8 @@
 
 #+nil
 (let* ((query (concatenate 'string
-                           "SELECT True::boolean AS A"
-                           ", -12::tinyint AS B"
-                           ", -123::smallint AS C"
-                           ", -1234::integer AS D"
-                           ", -12345::bigint AS E"
-                           ", 12::utinyint AS F"
-                           ", 123::usmallint AS G"
-                           ", 1234::uinteger AS H"
-                           ", 12345::ubigint AS I"
-                           ", -18446744073709551629::hugeint AS J"
-                           ", 3.14::float AS K"
-                           ", 2.71::double AS L"
-                           ", VERSION() AS an_inline_string"
-                           ", 'A pálpusztai egy finom sajt.'::text AS not_an_inline_string"
-                           ", '\\xFF\\x00'::blob AS an_inline_blob"
-                           ", ENCODE('바람 부는 대로, 물결 치는 대로')::blob AS not_an_inline_blob"
-                           ", current_date AS current_date"
-                           ", current_time AS current_time"
-                           ", now()::timestamp AS current_typestamp"
-                           ", 'epoch'::timestamptz AS epoch_tz"
-                           ", gen_random_uuid() AS uuid"
-                           ", INTERVAL 24 HOURS "
-                           "+ INTERVAL 2 MINUTES "
-                           "+ INTERVAL 55 SECONDS AS i1"
-                           ", INTERVAL 6 MONTHS AS i2"
-                           ", NULL AS null"))
-       (multi-row-query (format nil "~{~A~^ UNION ALL ~}" (loop :repeat 10 :collect query))))
+                           "SELECT 3.14::DECIMAL(3,2) AS A")))
   (with-open-database (db)
     (with-open-connection (conn db)
-      (with-query (result conn multi-row-query)
+      (with-query (result conn query)
         (translate-result result)))))

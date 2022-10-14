@@ -54,7 +54,7 @@ Currently only Linux and BSDs have been tested.
 
 ** Roadmap
 
-- [-] Support for querying built-in general-purpose types
+- [X] Support for querying built-in general-purpose types
   - [X] VARCHAR
   - [X] BOOLEAN
   - [X] TINYINT
@@ -70,7 +70,7 @@ Currently only Linux and BSDs have been tested.
   - [X] DOUBLE
   - [X] BLOB
   - [X] DATE
-  - [ ] DECIMAL(s, p)
+  - [X] DECIMAL(s, p)
   - [X] TIMESTAMP
   - [X] TIMESTAMP WITH TIME ZONE
   - [X] INTERVAL
