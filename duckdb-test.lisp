@@ -95,3 +95,14 @@
                 10000000000000000000000000000000000000)
              d))))
 
+(test query-date
+  (test-query (str:concat "SELECT '1970-01-01'::date AS a"
+                          ", '2243-10-17'::date AS b")
+      (a b)
+    (is (local-time:timestamp=
+         (local-time:unix-to-timestamp 0)
+         a))
+    (is (local-time:timestamp=
+         (local-time:unix-to-timestamp 8640000000)
+         b))))
+
