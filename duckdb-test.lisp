@@ -132,3 +132,16 @@
          (periods:add-time (local-time:unix-to-timestamp 0)
                            interval)
          ts))))
+
+(test query-time
+  (test-query (str:concat "SELECT t.time AS d "
+                          ", extract('hour' FROM t.time) AS hour "
+                          ", extract('minute' FROM t.time) AS minute "
+                          ", extract('microsecond' FROM t.time) AS microsecond "
+                          "FROM (SELECT current_time AS time) AS t")
+      (d hour minute microsecond)
+    (local-time-duration:duration=
+     (local-time-duration:duration :hour hour
+                                   :minute minute
+                                   :nsec (* microsecond 1000))
+     d)))
