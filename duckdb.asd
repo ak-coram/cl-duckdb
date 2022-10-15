@@ -10,6 +10,8 @@
                #:local-time
                #:local-time-duration
                #:periods
+               #:str
+               #:serapeum
                #:uuid
                #:uiop)
   :components ((:file "package")
@@ -19,7 +21,6 @@
 
 (asdf:defsystem #:duckdb/test
   :depends-on (#:duckdb
-               #:fiveam
-               #:str)
+               #:fiveam)
   :components ((:file "duckdb-test"))
   :perform (test-op (o c) (symbol-call :fiveam '#:run! :duckdb)))

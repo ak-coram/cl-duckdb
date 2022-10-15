@@ -117,3 +117,18 @@
          (local-time:unix-to-timestamp 8639999999)
          b))))
 
+(test query-interval
+  (test-query (str:concat "SELECT t.i AS interval, epoch_ms(0) + t.i AS ts "
+                          "FROM (SELECT INTERVAL 1001 YEAR "
+                          "+ INTERVAL 1001 MONTH "
+                          "+ INTERVAL 1001 DAY "
+                          "+ INTERVAL 1001 HOUR "
+                          "+ INTERVAL 1001 MINUTE "
+                          "+ INTERVAL 1001 SECOND "
+                          "+ INTERVAL 1001 MILLISECOND "
+                          "+ INTERVAL 1001 MICROSECOND AS i) AS t")
+      (interval ts)
+    (is (local-time:timestamp=
+         (periods:add-time (local-time:unix-to-timestamp 0)
+                           interval)
+         ts))))

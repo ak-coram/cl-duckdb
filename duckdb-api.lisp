@@ -113,7 +113,19 @@
 
 (defmethod translate-from-foreign (value (type duckdb-interval-type))
   (with-foreign-slots ((months days micros) value (:struct duckdb-interval))
-    (periods:duration :months months :days days :microseconds micros)))
+    (serapeum:mvlet* ((years months (floor months 12))
+                      (milliseconds microseconds (floor micros 1000))
+                      (seconds milliseconds (floor milliseconds 1000))
+                      (minutes seconds (floor seconds 60))
+                      (hours minutes (floor minutes 60)))
+      (periods:duration :years years
+                        :months months
+                        :days days
+                        :hours hours
+                        :minutes minutes
+                        :seconds seconds
+                        :milliseconds milliseconds
+                        :microseconds microseconds))))
 
 (defcenum duckdb-type
   (:duckdb-invalid-type 0)
