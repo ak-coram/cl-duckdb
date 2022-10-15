@@ -17,7 +17,7 @@ This is a CFFI wrapper around the [[https://duckdb.org/][DuckDB]] C API.
 
 ** Development setup
 
-Currently only Linux and BSDs have been tested.
+Currently only Linux, BSDs and macOS are tested.
 
 - Install [[https://sbcl.org/][SBCL]], [[https://www.quicklisp.org/][Quicklisp]], [[https://sourceware.org/libffi/][libffi]] and of course [[https://duckdb.org/][DuckDB]].
 - Clone this repository and add it as a local Quicklisp project, for

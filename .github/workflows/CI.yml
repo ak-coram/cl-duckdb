@@ -6,27 +6,60 @@ on:
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
+  schedule:
+    - cron: '0 0 1 * *'
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  test:
+    name: ${{ matrix.lisp }} on ${{ matrix.os }} with ${{ matrix.duckdb }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        lisp: [sbcl-bin]
+        os: [ubuntu-latest, macos-latest]
+        duckdb: [0.5.1]
+
+    env:
+      LISP: ${{ matrix.lisp }}
+      DUCKDB_VERSION: ${{ matrix.duckdb }}
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Install sbcl
-        run: sudo apt-get install sbcl
-
-      - name: Install quicklisp
-        run: |
-          wget https://beta.quicklisp.org/quicklisp.lisp
-          sbcl --load quicklisp.lisp --eval '(progn (quicklisp-quickstart:install) (quit))'
-
-      - name: Install duckdb
-        run: |
-          wget https://github.com/duckdb/duckdb/releases/download/v0.5.1/libduckdb-linux-amd64.zip
-          sudo unzip libduckdb-linux-amd64.zip -d /usr/lib/
+      - uses: actions/checkout@v2
           
-      - name: Load cl-duckdb
+      - name: Install DuckDB (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
         run: |
-          ln -s $GITHUB_WORKSPACE ~/quicklisp/local-projects/
-          sbcl --load ~/quicklisp/setup.lisp --eval "(progn (ql:quickload :duckdb/test) (uiop:quit (if (uiop:symbol-call :fiveam '#:run! :duckdb) 0 1)))"
+          aria2c "https://github.com/duckdb/duckdb/releases/download/v${DUCKDB_VERSION}/libduckdb-linux-amd64.zip"
+          unzip libduckdb-linux-amd64.zip -d .
+
+      - name: Install DuckDB (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          aria2c "https://github.com/duckdb/duckdb/releases/download/v${DUCKDB_VERSION}/libduckdb-osx-universal.zip"
+          7z x libduckdb-osx-universal.zip
+
+      - name: Install DuckDB (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          aria2c "https://github.com/duckdb/duckdb/releases/download/v$env:DUCKDB_VERSION/libduckdb-windows-amd64.zip"
+          7z x libduckdb-windows-amd64.zip
+
+      - uses: 40ants/setup-lisp@v2
+          
+      - name: Run tests (Non-Windows)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          export DYLD_LIBRARY_PATH="./"
+          export LD_LIBRARY_PATH="./"
+          ros install neil-lindquist/ci-utils
+          run-fiveam -e t -l duckdb/test :duckdb
+
+      - name: Run tests (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          export PATH=$PATH:./
+          ros install neil-lindquist/ci-utils
+          run-fiveam -e t -l duckdb/test :duckdb

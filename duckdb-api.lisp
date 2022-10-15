@@ -3,8 +3,9 @@
 (in-package #:duckdb-api)
 
 (define-foreign-library duckdb-lib
-  (:unix "libduckdb.so")
-  (t (:default "libduckdb")))
+                        (:darwin "libduckdb.dylib")
+                        (:unix "libduckdb.so")
+                        (t (:default "libduckdb")))
 
 (use-foreign-library duckdb-lib)
 
