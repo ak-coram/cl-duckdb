@@ -11,7 +11,7 @@ on:
 
 jobs:
   test:
-    name: ${{ matrix.lisp }} on ${{ matrix.os }} with ${{ matrix.duckdb }}
+    name: ${{ matrix.lisp }} on ${{ matrix.os }} with duckdb ${{ matrix.duckdb }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -45,14 +45,22 @@ jobs:
           aria2c "https://github.com/duckdb/duckdb/releases/download/v$env:DUCKDB_VERSION/libduckdb-windows-amd64.zip"
           7z x libduckdb-windows-amd64.zip
 
-      - uses: 40ants/setup-lisp@v2
+      - name: Setup Lisp (Non-Windows)
+        uses: 40ants/setup-lisp@v2
+        if: runner.os != 'Windows'
+          
+      - name: Setup sbcl-bin/2.2.6 (Windows)
+        uses: 40ants/setup-lisp@v2
+        if: runner.os == 'Windows'
+        env:
+          LISP: sbcl-bin/2.2.6
           
       - name: Run tests (Non-Windows)
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          export DYLD_LIBRARY_PATH="./"
-          export LD_LIBRARY_PATH="./"
+          export DYLD_LIBRARY_PATH=./
+          export LD_LIBRARY_PATH=./
           ros install neil-lindquist/ci-utils
           run-fiveam -e t -l duckdb/test :duckdb
 
@@ -60,6 +68,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
-          export PATH=$PATH:./
+          export C_INCLUDE_PATH=$C_INCLUDE_PATH:/usr/include/:./
+          export LIBRARY_PATH=$LIBRARY_PATH:/usr/lib/:./
+          pacman --noconfirm -S libffi-devel
           ros install neil-lindquist/ci-utils
           run-fiveam -e t -l duckdb/test :duckdb
