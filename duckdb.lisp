@@ -115,7 +115,10 @@
                    (duckdb-api:duckdb-prepare-error statement)))))))
 
 (defun destroy-statement (statement)
-  (duckdb-api:duckdb-destroy-prepare (handle statement)))
+  (with-foreign-object (p-statement 'duckdb-api:duckdb-prepared-statement)
+    (setf (mem-ref p-statement 'duckdb-api:duckdb-prepared-statement)
+          (handle statement))
+    (duckdb-api:duckdb-destroy-prepare p-statement)))
 
 (defmacro with-statement ((statement-var connection query) &body body)
   `(let ((,statement-var (prepare ,connection ,query)))
@@ -139,8 +142,9 @@
 (defun query (connection query)
   (let ((p-result (foreign-alloc '(:struct duckdb-api:duckdb-result)))
         (statement (prepare connection query)))
-    (if (eq (duckdb-api:duckdb-execute-prepared (handle statement)
-                                                p-result)
+    (if (eq (prog1 (duckdb-api:duckdb-execute-prepared (handle statement)
+                                                       p-result)
+              (destroy-statement statement))
             :duckdb-success)
         (make-result connection statement p-result)
         (error 'duckdb-error
