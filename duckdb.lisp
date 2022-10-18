@@ -93,6 +93,8 @@
 (defclass statement ()
   ((connection :initarg :connection :accessor connection)
    (query :initarg :query)
+   (parameter-count :initarg :parameter-count :accessor parameter-count)
+   (parameter-types :initarg :parameter-types :accessor parameter-types)
    (handle :accessor handle :initarg :handle)))
 
 (defun prepare (connection query)
@@ -104,13 +106,18 @@
              (statement (mem-ref p-statement
                                  'duckdb-api:duckdb-prepared-statement)))
         (if (eq result :duckdb-success)
-            (make-instance 'statement
-                           :connection connection
-                           :query query
-                           :handle statement)
+            (let* ((parameter-count (duckdb-api:duckdb-nparams statement))
+                   (parameter-types
+                     (loop :for i :from 1 :to parameter-count
+                           :collect (duckdb-api:duckdb-param-type statement i))))
+              (make-instance 'statement
+                             :connection connection
+                             :query query
+                             :handle statement
+                             :parameter-count parameter-count
+                             :parameter-types parameter-types))
             (error 'duckdb-error
                    :database (database connection)
-                   :connection connection
                    :error-message
                    (duckdb-api:duckdb-prepare-error statement)))))))
 
@@ -123,7 +130,7 @@
 (defmacro with-statement ((statement-var connection query) &body body)
   `(let ((,statement-var (prepare ,connection ,query)))
      (unwind-protect
-          ,@body
+          (progn ,@body)
        (destroy-statement ,statement-var))))
 
 ;;; Queries
@@ -148,7 +155,6 @@
         (make-result connection statement p-result)
         (error 'duckdb-error
                :database (database connection)
-               :connection connection
                :statement statement
                :error-message (duckdb-api:duckdb-result-error p-result)))))
 
@@ -160,7 +166,7 @@
 (defmacro with-execute ((result-var statement) &body body)
   `(let ((,result-var (execute ,statement)))
      (unwind-protect
-          ,@body
+          (progn ,@body)
        (destroy-result ,result-var))))
 
 (defun translate-vector (chunk-size vector results)
@@ -200,7 +206,45 @@
           :do (translate-chunk result-alist chunk))
     result-alist))
 
-(defun query (connection query)
+(defun assert-parameter-count (statement values)
+  (let ((statement-parameter-count (parameter-count statement))
+        (binding-value-count (length values)))
+    (unless (eql statement-parameter-count
+                 binding-value-count)
+      (error 'duckdb-error
+             :database (database (connection statement))
+             :statement statement
+             :error-message
+             (format nil "Failed to bind ~d value~:p to ~d parameter~:p."
+                     (parameter-count statement)
+                     (length values))))))
+
+(defun bind-parameters (statement values)
+  (assert-parameter-count statement values)
+  (let ((parameter-count (parameter-count statement))
+        (parameter-types (parameter-types statement))
+        (statement-handle (handle statement)))
+    (unless (eql (duckdb-api:duckdb-clear-bindings statement-handle)
+                 :duckdb-success)
+      (error 'duckdb-error
+             :database (database (connection statement))
+             :statement statement
+             :error-message "Failed to clear statement bindings."))
+    (loop
+      :for i :from 1 :to parameter-count
+      :for value :in values
+      :for duckdb-type :in parameter-types
+      :do (typecase value
+            ;; Treat nil as false for duckdb-boolean parameters
+            (null (if (eql duckdb-type :duckdb-boolean)
+                      (duckdb-api:duckdb-bind-boolean statement-handle i value)
+                      (duckdb-api:duckdb-bind-null statement-handle i)))
+            (boolean (duckdb-api:duckdb-bind-boolean statement-handle
+                                                     i
+                                                     value))))))
+
+(defun query (connection query &rest parameters)
   (with-statement (statement connection query)
+    (bind-parameters statement parameters)
     (with-execute (result statement)
       (translate-result result))))

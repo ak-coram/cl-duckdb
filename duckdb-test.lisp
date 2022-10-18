@@ -10,29 +10,32 @@
 (defun get-first-value (result key)
   (aref (alexandria:assoc-value result key :test #'string=) 0))
 
-(defmacro test-query (query vals &body body)
-  (alexandria:with-gensyms (db conn cols)
+(defmacro test-query (query parameters result-syms &body body)
+  (alexandria:with-gensyms (db conn result)
     `(ddb:with-open-database (,db)
        (ddb:with-open-connection (,conn ,db)
-         (let* ((,cols (ddb:query ,conn ,query))
-                ,@(loop :for val :in vals
-                        :collect `(,val
-                                   (get-first-value ,cols
-                                                    (str:downcase (quote ,val))))))
+         (let* ((,result (ddb:query ,conn ,query ,@parameters))
+                ,@(loop :for sym :in result-syms
+                        :collect
+                        `(,sym (get-first-value ,result
+                                                (str:downcase (quote ,sym))))))
            ,@body)))))
 
 (test query-null
-  (test-query "SELECT NULL as null" (null)
+  (test-query "SELECT NULL as null" nil
+      (null)
     (is-false null)))
 
 (test query-non-ascii-string
   (let ((s "Árvíztűrő tükörfúrógép"))
-    (test-query (str:concat "SELECT '" s "' AS a, LENGTH('" s "') AS b") (a b)
+    (test-query (str:concat "SELECT '" s "' AS a, LENGTH('" s "') AS b") nil
+        (a b)
       (is (string= s a))
       (is (eql (length s) b)))))
 
 (test query-boolean
-  (test-query "SELECT True AS a, False AS b" (a b)
+  (test-query "SELECT True AS a, False AS b" nil
+      (a b)
     (is-true a)
     (is-false b)))
 
@@ -48,6 +51,7 @@
                   ", 123::usmallint AS usmallint"
                   ", 1234::uinteger AS uinteger"
                   ", 12345::ubigint AS ubigint")
+      nil
       (hugeint
        tinyint smallint integer bigint
        utinyint usmallint uinteger ubigint)
@@ -64,6 +68,7 @@
 (test query-floats
   (test-query (str:concat "SELECT 3.14::float AS float"
                           ", 2.71::double AS double")
+      nil
       (float double)
     (is (eql (float 3.14) float))
     (is (eql 2.71d0 double))))
@@ -71,13 +76,14 @@
 (test query-blob
   (let ((s "바람 부는 대로, 물결 치는 대로"))
     (test-query
-        (str:concat "SELECT ENCODE('" s "') AS blob")
+        (str:concat "SELECT ENCODE('" s "') AS blob") nil
         (blob)
       (is (string= s (babel:octets-to-string blob))))))
 
 (test query-uuid
   (test-query (str:concat "SELECT uuid AS a, uuid::text AS b "
                           "FROM (SELECT gen_random_uuid() AS uuid)")
+      nil
       (a b)
     (is (uuid:uuid= a (uuid:make-uuid-from-string b)))))
 
@@ -86,6 +92,7 @@
                           ", 3.14159265::DECIMAL(9,8) AS b"
                           ", 3.14159265358979323::DECIMAL(18,17) AS c"
                           ", 3.1415926535897932384626433832795028841::DECIMAL(38,37) AS d")
+      nil
       (a b c d)
     (is (eql 3141/1000 a))
     (is (eql 314159265/100000000 b))
@@ -97,6 +104,7 @@
 (test query-date
   (test-query (str:concat "SELECT '1970-01-01'::date AS a"
                           ", '2243-10-17'::date AS b")
+      nil
       (a b)
     (is (local-time:timestamp=
          (local-time:unix-to-timestamp 0)
@@ -108,6 +116,7 @@
 (test query-timestamp
   (test-query (str:concat "SELECT '1970-01-01 23:59:59'::timestamp AS a"
                           ", '2243-10-16 23:59:59'::timestamp AS b")
+      nil
       (a b)
     (is (local-time:timestamp=
          (local-time:unix-to-timestamp 86399)
@@ -126,6 +135,7 @@
                           "+ INTERVAL 1001 SECOND "
                           "+ INTERVAL 1001 MILLISECOND "
                           "+ INTERVAL 1001 MICROSECOND AS i) AS t")
+      nil
       (interval ts)
     (is (local-time:timestamp=
          (periods:add-time (local-time:unix-to-timestamp 0)
@@ -138,9 +148,22 @@
                           ", extract('minute' FROM t.time) AS minute "
                           ", extract('microsecond' FROM t.time) AS microsecond "
                           "FROM (SELECT current_time AS time) AS t")
+      nil
       (d hour minute microsecond)
     (local-time-duration:duration=
      (local-time-duration:duration :hour hour
                                    :minute minute
                                    :nsec (* microsecond 1000))
      d)))
+
+(test bind-null
+  (test-query "SELECT ? IS NULL AS a, ? AS b" (nil nil)
+      (a b)
+    (is-true a)
+    (is (null b))))
+
+(test bind-boolean
+  (test-query "SELECT NOT(?) AS a, NOT(?) AS b" (t nil)
+      (a b)
+    (is-false a)
+    (is-true b)))

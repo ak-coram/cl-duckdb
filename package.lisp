@@ -40,6 +40,11 @@
            #:duckdb-prepare
            #:duckdb-destroy-prepare
            #:duckdb-execute-prepared
+           #:duckdb-nparams
+           #:duckdb-param-type
+           #:duckdb-clear-bindings
+           #:duckdb-bind-null
+           #:duckdb-bind-boolean
            #:result-chunk-count
            #:result-get-chunk
            #:duckdb-validity-row-is-valid
@@ -50,11 +55,15 @@
   (:use #:cl #:cffi)
   (:export #:open-database
            #:close-database
-           #:with-open-database
            #:connect
            #:disconnect
+           #:prepare
+           #:destroy-statement
+           #:execute
+           #:destroy-result
+           #:with-open-database
            #:with-open-connection
            #:with-statement
            #:with-execute
-           #:query
-           #:translate-result))
+           #:with-execute
+           #:query))

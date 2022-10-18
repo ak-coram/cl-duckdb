@@ -338,6 +338,10 @@
 (defcfun duckdb-nparams idx
   (prepared-statement duckdb-prepared-statement))
 
+(defcfun duckdb-param-type duckdb-type
+  (prepared-statement duckdb-prepared-statement)
+  (param-idx idx))
+
 (defcfun duckdb-clear-bindings duckdb-state
   (prepared-statement duckdb-prepared-statement))
 
@@ -345,3 +349,7 @@
   (prepared-statement duckdb-prepared-statement)
   (param-idx idx))
 
+(defcfun duckdb-bind-boolean duckdb-state
+  (prepared-statement duckdb-prepared-statement)
+  (param-idx idx)
+  (val :bool))
