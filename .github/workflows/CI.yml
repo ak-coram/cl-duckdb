@@ -15,10 +15,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        lisp: [sbcl-bin]
+        lisp: [sbcl-bin, ccl-bin, ecl]
         os: [ubuntu-latest, windows-latest, macos-latest]
         duckdb: [0.5.1]
-
+        exclude:
+          - os: windows-latest
+            lisp: ccl-bin
+          - os: windows-latest
+            lisp: ecl
     env:
       LISP: ${{ matrix.lisp }}
       DUCKDB_VERSION: ${{ matrix.duckdb }}
