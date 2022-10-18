@@ -170,7 +170,9 @@
 
 (test bind-integers
   (test-query
-      (str:concat "SELECT ?::tinyint AS tinyint"
+      (str:concat "SELECT ?::hugeint AS minhugeint"
+                  ", ?::hugeint AS maxhugeint"
+                  ", ?::tinyint AS tinyint"
                   ", ?::utinyint AS utinyint"
                   ", ?::smallint AS smallint"
                   ", ?::usmallint AS usmallint"
@@ -178,10 +180,16 @@
                   ", ?::uinteger AS uinteger"
                   ", ?::bigint AS bigint"
                   ", ?::ubigint AS ubigint")
-      (-128 255 -32768 65535 -2147483648 4294967295
-            -9223372036854775808 18446744073709551615)
-      (tinyint smallint integer bigint
-               utinyint usmallint uinteger ubigint)
+      (-170141183460469231731687303715884105727
+       170141183460469231731687303715884105727
+       -128 255 -32768 65535 -2147483648 4294967295
+       -9223372036854775808 18446744073709551615)
+      (minhugeint
+       maxhugeint
+       tinyint smallint integer bigint
+       utinyint usmallint uinteger ubigint)
+    (is (eql -170141183460469231731687303715884105727 minhugeint))
+    (is (eql 170141183460469231731687303715884105727 maxhugeint))
     (is (eql -128 tinyint))
     (is (eql 255 utinyint))
     (is (eql -32768 smallint))

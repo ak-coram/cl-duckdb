@@ -261,7 +261,11 @@
             ((integer -9223372036854775808 9223372036854775807)
              (duckdb-api:duckdb-bind-int64 statement-handle i value))
             ((integer 0 18446744073709551615)
-             (duckdb-api:duckdb-bind-uint64 statement-handle i value))))))
+             (duckdb-api:duckdb-bind-uint64 statement-handle i value))
+            ;; hugeint
+            ((integer -170141183460469231731687303715884105727
+                      170141183460469231731687303715884105727)
+             (duckdb-api:bind-hugeint statement-handle i value))))))
 
 (defun query (connection query &rest parameters)
   (with-statement (statement connection query)
