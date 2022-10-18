@@ -334,3 +334,14 @@
 (defcfun duckdb-execute-prepared duckdb-state
   (prepared-statement duckdb-prepared-statement)
   (out-result p-duckdb-result))
+
+(defcfun duckdb-nparams idx
+  (prepared-statement duckdb-prepared-statement))
+
+(defcfun duckdb-clear-bindings duckdb-state
+  (prepared-statement duckdb-prepared-statement))
+
+(defcfun duckdb-bind-null duckdb-state
+  (prepared-statement duckdb-prepared-statement)
+  (param-idx idx))
+

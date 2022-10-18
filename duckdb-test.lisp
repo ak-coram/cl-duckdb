@@ -11,16 +11,15 @@
   (aref (alexandria:assoc-value result key :test #'string=) 0))
 
 (defmacro test-query (query vals &body body)
-  (alexandria:with-gensyms (db conn result cols)
+  (alexandria:with-gensyms (db conn cols)
     `(ddb:with-open-database (,db)
        (ddb:with-open-connection (,conn ,db)
-         (ddb:with-query (,result ,conn ,query)
-           (let* ((,cols (ddb:translate-result ,result))
-                  ,@(loop :for val :in vals
-                          :collect `(,val
-                                     (get-first-value ,cols
-                                                      (str:downcase (quote ,val))))))
-             ,@body))))))
+         (let* ((,cols (ddb:query ,conn ,query))
+                ,@(loop :for val :in vals
+                        :collect `(,val
+                                   (get-first-value ,cols
+                                                    (str:downcase (quote ,val))))))
+           ,@body)))))
 
 (test query-null
   (test-query "SELECT NULL as null" (null)

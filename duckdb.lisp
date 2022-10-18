@@ -91,7 +91,7 @@
 ;;; Statements
 
 (defclass statement ()
-  ((connection :initarg :connection)
+  ((connection :initarg :connection :accessor connection)
    (query :initarg :query)
    (handle :accessor handle :initarg :handle)))
 
@@ -139,12 +139,11 @@
                  :statement statement
                  :handle p-result))
 
-(defun query (connection query)
-  (let ((p-result (foreign-alloc '(:struct duckdb-api:duckdb-result)))
-        (statement (prepare connection query)))
-    (if (eq (prog1 (duckdb-api:duckdb-execute-prepared (handle statement)
-                                                       p-result)
-              (destroy-statement statement))
+(defun execute (statement)
+  (let ((connection (connection statement))
+        (p-result (foreign-alloc '(:struct duckdb-api:duckdb-result))))
+    (if (eq (duckdb-api:duckdb-execute-prepared (handle statement)
+                                                p-result)
             :duckdb-success)
         (make-result connection statement p-result)
         (error 'duckdb-error
@@ -158,8 +157,8 @@
     (duckdb-api:duckdb-destroy-result p-result)
     (foreign-free p-result)))
 
-(defmacro with-query ((result-var connection query) &body body)
-  `(let ((,result-var (query ,connection ,query)))
+(defmacro with-execute ((result-var statement) &body body)
+  `(let ((,result-var (execute ,statement)))
      (unwind-protect
           ,@body
        (destroy-result ,result-var))))
@@ -201,10 +200,7 @@
           :do (translate-chunk result-alist chunk))
     result-alist))
 
-#+nil
-(let* ((query (concatenate 'string
-                           "SELECT 3.14::DECIMAL(3,2) AS A")))
-  (with-open-database (db)
-    (with-open-connection (conn db)
-      (with-query (result conn query)
-        (translate-result result)))))
+(defun query (connection query)
+  (with-statement (statement connection query)
+    (with-execute (result statement)
+      (translate-result result))))

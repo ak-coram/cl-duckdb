@@ -54,5 +54,7 @@
            #:connect
            #:disconnect
            #:with-open-connection
-           #:with-query
+           #:with-statement
+           #:with-execute
+           #:query
            #:translate-result))
