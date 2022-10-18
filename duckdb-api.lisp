@@ -319,3 +319,18 @@
 (defcfun duckdb-validity-row-is-valid :bool
   (validity p-validity)
   (row idx))
+
+(defcfun duckdb-prepare-error :string
+  (statement duckdb-prepared-statement))
+
+(defcfun duckdb-prepare duckdb-state
+  (connection duckdb-connection)
+  (query :string)
+  (out-prepared-statement duckdb-prepared-statement))
+
+(defcfun duckdb-destroy-prepare :void
+  (prepared-statement duckdb-prepared-statement))
+
+(defcfun duckdb-execute-prepared duckdb-state
+  (prepared-statement duckdb-prepared-statement)
+  (out-result p-duckdb-result))

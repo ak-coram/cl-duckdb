@@ -35,6 +35,11 @@
            #:duckdb-data-chunk-get-column-count
            #:duckdb-data-chunk-get-size
            #:duckdb-data-chunk-get-vector
+           #:duckdb-prepared-statement
+           #:duckdb-prepare-error
+           #:duckdb-prepare
+           #:duckdb-destroy-prepare
+           #:duckdb-execute-prepared
            #:result-chunk-count
            #:result-get-chunk
            #:duckdb-validity-row-is-valid
