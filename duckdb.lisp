@@ -88,29 +88,66 @@
           (progn ,@body)
        (disconnect ,connection-var))))
 
+;;; Statements
+
+(defclass statement ()
+  ((connection :initarg :connection)
+   (query :initarg :query)
+   (handle :accessor handle :initarg :handle)))
+
+(defun prepare (connection query)
+  (with-foreign-object (p-statement 'duckdb-api:duckdb-prepared-statement)
+    (with-foreign-string (p-query query)
+      (let* ((result (duckdb-api:duckdb-prepare (handle connection)
+                                                p-query
+                                                p-statement))
+             (statement (mem-ref p-statement
+                                 'duckdb-api:duckdb-prepared-statement)))
+        (if (eq result :duckdb-success)
+            (make-instance 'statement
+                           :connection connection
+                           :query query
+                           :handle statement)
+            (error 'duckdb-error
+                   :database (database connection)
+                   :connection connection
+                   :error-message
+                   (duckdb-api:duckdb-prepare-error statement)))))))
+
+(defun destroy-statement (statement)
+  (duckdb-api:duckdb-destroy-prepare (handle statement)))
+
+(defmacro with-statement ((statement-var connection query) &body body)
+  `(let ((,statement-var (prepare ,connection ,query)))
+     (unwind-protect
+          ,@body
+       (destroy-statement ,statement-var))))
+
 ;;; Queries
 
 (defclass result ()
   ((connection :initarg :connection)
+   (statement :initarg :statement)
    (handle :accessor handle :initarg :handle)))
 
-(defun make-result (connection p-result)
+(defun make-result (connection statement p-result)
   (make-instance 'result
                  :connection connection
+                 :statement statement
                  :handle p-result))
 
 (defun query (connection query)
-  (let ((p-result (foreign-alloc '(:struct duckdb-api:duckdb-result))))
-    (with-foreign-string (p-query query)
-      (if (eq (duckdb-api:duckdb-query (handle connection)
-                                       p-query
-                                       p-result)
-              :duckdb-success)
-          (make-result connection p-result)
-          (error 'duckdb-error
-                 :database (database connection)
-                 :connection connection
-                 :error-message (duckdb-api:duckdb-result-error p-result))))))
+  (let ((p-result (foreign-alloc '(:struct duckdb-api:duckdb-result)))
+        (statement (prepare connection query)))
+    (if (eq (duckdb-api:duckdb-execute-prepared (handle statement)
+                                                p-result)
+            :duckdb-success)
+        (make-result connection statement p-result)
+        (error 'duckdb-error
+               :database (database connection)
+               :connection connection
+               :statement statement
+               :error-message (duckdb-api:duckdb-result-error p-result)))))
 
 (defun destroy-result (result)
   (let ((p-result (handle result)))
