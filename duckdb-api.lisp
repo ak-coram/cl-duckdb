@@ -329,7 +329,7 @@
   (out-prepared-statement duckdb-prepared-statement))
 
 (defcfun duckdb-destroy-prepare :void
-  (prepared-statement duckdb-prepared-statement))
+  (prepared-statement (:pointer duckdb-prepared-statement)))
 
 (defcfun duckdb-execute-prepared duckdb-state
   (prepared-statement duckdb-prepared-statement)
