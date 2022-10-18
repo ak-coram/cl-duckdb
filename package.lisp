@@ -45,6 +45,14 @@
            #:duckdb-clear-bindings
            #:duckdb-bind-null
            #:duckdb-bind-boolean
+           #:duckdb-bind-uint8
+           #:duckdb-bind-uint16
+           #:duckdb-bind-uint32
+           #:duckdb-bind-uint64
+           #:duckdb-bind-int8
+           #:duckdb-bind-int16
+           #:duckdb-bind-int32
+           #:duckdb-bind-int64
            #:result-chunk-count
            #:result-get-chunk
            #:duckdb-validity-row-is-valid

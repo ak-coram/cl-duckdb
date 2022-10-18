@@ -353,3 +353,43 @@
   (prepared-statement duckdb-prepared-statement)
   (param-idx idx)
   (val :bool))
+
+(defcfun duckdb-bind-uint8 duckdb-state
+  (prepared-statement duckdb-prepared-statement)
+  (param-idx idx)
+  (val :uint8))
+
+(defcfun duckdb-bind-uint16 duckdb-state
+  (prepared-statement duckdb-prepared-statement)
+  (param-idx idx)
+  (val :uint16))
+
+(defcfun duckdb-bind-uint32 duckdb-state
+  (prepared-statement duckdb-prepared-statement)
+  (param-idx idx)
+  (val :uint32))
+
+(defcfun duckdb-bind-uint64 duckdb-state
+  (prepared-statement duckdb-prepared-statement)
+  (param-idx idx)
+  (val :uint64))
+
+(defcfun duckdb-bind-int8 duckdb-state
+  (prepared-statement duckdb-prepared-statement)
+  (param-idx idx)
+  (val :int8))
+
+(defcfun duckdb-bind-int16 duckdb-state
+  (prepared-statement duckdb-prepared-statement)
+  (param-idx idx)
+  (val :int16))
+
+(defcfun duckdb-bind-int32 duckdb-state
+  (prepared-statement duckdb-prepared-statement)
+  (param-idx idx)
+  (val :int32))
+
+(defcfun duckdb-bind-int64 duckdb-state
+  (prepared-statement duckdb-prepared-statement)
+  (param-idx idx)
+  (val :int64))

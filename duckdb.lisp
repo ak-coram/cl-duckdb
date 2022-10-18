@@ -241,7 +241,27 @@
                       (duckdb-api:duckdb-bind-null statement-handle i)))
             (boolean (duckdb-api:duckdb-bind-boolean statement-handle
                                                      i
-                                                     value))))))
+                                                     value))
+            ;; 8-bit integers
+            ((integer -128 127)
+             (duckdb-api:duckdb-bind-int8 statement-handle i value))
+            ((integer 0 255)
+             (duckdb-api:duckdb-bind-uint8 statement-handle i value))
+            ;; 16-bit integers
+            ((integer -32768 32767)
+             (duckdb-api:duckdb-bind-int16 statement-handle i value))
+            ((integer 0 65535)
+             (duckdb-api:duckdb-bind-uint16 statement-handle i value))
+            ;; 32-bit integers
+            ((integer -2147483648 2147483647)
+             (duckdb-api:duckdb-bind-int32 statement-handle i value))
+            ((integer 0 4294967295)
+             (duckdb-api:duckdb-bind-uint32 statement-handle i value))
+            ;; 64-bit integers
+            ((integer -9223372036854775808 9223372036854775807)
+             (duckdb-api:duckdb-bind-int64 statement-handle i value))
+            ((integer 0 18446744073709551615)
+             (duckdb-api:duckdb-bind-uint64 statement-handle i value))))))
 
 (defun query (connection query &rest parameters)
   (with-statement (statement connection query)
