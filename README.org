@@ -55,6 +55,7 @@ Currently only Linux, BSDs, Windows and macOS are tested (x86-64).
 ** Roadmap
 
 - [X] Support for querying built-in general-purpose types
+  - [X] NULL
   - [X] VARCHAR
   - [X] BOOLEAN
   - [X] TINYINT
@@ -76,7 +77,29 @@ Currently only Linux, BSDs, Windows and macOS are tested (x86-64).
   - [X] INTERVAL
   - [X] TIME
   - [X] UUID
-- [ ] Support for binding built-in general-purpose types
+- [-] Support for binding built-in general-purpose types
+  - [X] NULL
+  - [ ] VARCHAR
+  - [X] BOOLEAN
+  - [X] TINYINT
+  - [X] SMALLINT
+  - [X] INTEGER
+  - [X] BIGINT
+  - [ ] HUGEINT
+  - [X] UTINYINT
+  - [X] USMALLINT
+  - [X] UINTEGER
+  - [X] UBIGINT
+  - [ ] REAL (FLOAT)
+  - [ ] DOUBLE
+  - [ ] BLOB
+  - [ ] DATE
+  - [ ] DECIMAL(s, p)
+  - [ ] TIMESTAMP
+  - [ ] TIMESTAMP WITH TIME ZONE
+  - [ ] INTERVAL
+  - [ ] TIME
+  - [ ] UUID
 - [ ] Support for querying nested / composite types
 - [ ] Support for binding nested / composite types
 - [ ] ...
