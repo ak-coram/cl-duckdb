@@ -100,7 +100,7 @@
                  :handle p-result))
 
 (defun query (connection query)
-  (with-foreign-object (p-result 'duckdb-api:p-duckdb-result)
+  (let ((p-result (foreign-alloc '(:struct duckdb-api::duckdb-result))))
     (with-foreign-string (p-query query)
       (if (eq (duckdb-api:duckdb-query (handle connection)
                                        p-query
@@ -113,7 +113,9 @@
                  :error-message (duckdb-api:duckdb-result-error p-result))))))
 
 (defun destroy-result (result)
-  (duckdb-api:duckdb-destroy-result (handle result)))
+  (let ((p-result (handle result)))
+    (duckdb-api:duckdb-destroy-result p-result)
+    (foreign-free p-result)))
 
 (defmacro with-query ((result-var connection query) &body body)
   `(let ((,result-var (query ,connection ,query)))
