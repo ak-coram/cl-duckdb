@@ -3,6 +3,7 @@
 (defpackage #:duckdb-api
   (:use #:cl #:cffi)
   (:export #:get-ffi-type
+           #:duckdb-result
            #:p-duckdb-result
            #:p-duckdb-column
            #:duckdb-database

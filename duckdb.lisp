@@ -100,7 +100,7 @@
                  :handle p-result))
 
 (defun query (connection query)
-  (let ((p-result (foreign-alloc '(:struct duckdb-api::duckdb-result))))
+  (let ((p-result (foreign-alloc '(:struct duckdb-api:duckdb-result))))
     (with-foreign-string (p-query query)
       (if (eq (duckdb-api:duckdb-query (handle connection)
                                        p-query
