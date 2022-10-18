@@ -85,7 +85,7 @@ Currently only Linux, BSDs, Windows and macOS are tested (x86-64).
   - [X] SMALLINT
   - [X] INTEGER
   - [X] BIGINT
-  - [ ] HUGEINT
+  - [X] HUGEINT
   - [X] UTINYINT
   - [X] USMALLINT
   - [X] UINTEGER
