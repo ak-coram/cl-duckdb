@@ -24,7 +24,7 @@
 
 (defmethod initialize-instance :after
     ((instance database) &key path)
-  (with-foreign-object (p-database '(:pointer duckdb-api:duckdb-database))
+  (with-foreign-object (p-database 'duckdb-api:duckdb-database)
     (with-foreign-object (p-error-message '(:pointer :string))
       (let* ((path (or path ":memory:"))
              ;; prefer duckdb-open-ext over duckdb-open for error message
@@ -44,7 +44,7 @@
   (make-instance 'database :path path))
 
 (defun close-database (database)
-  (with-foreign-object (p-database '(:pointer duckdb-api:duckdb-database))
+  (with-foreign-object (p-database 'duckdb-api:duckdb-database)
     (setf (mem-ref p-database 'duckdb-api:duckdb-database)
           (handle database))
     (duckdb-api:duckdb-close p-database)))
@@ -63,7 +63,7 @@
 
 (defmethod initialize-instance :after
     ((instance connection) &key database)
-  (with-foreign-object (p-connection '(:pointer duckdb-api:duckdb-connection))
+  (with-foreign-object (p-connection 'duckdb-api:duckdb-connection)
     (let ((result (duckdb-api:duckdb-connect (handle database)
                                              p-connection)))
       (if (eq result :duckdb-success)
@@ -77,7 +77,7 @@
   (make-instance 'connection :database database))
 
 (defun disconnect (connection)
-  (with-foreign-object (p-connection '(:pointer duckdb-api:duckdb-connection))
+  (with-foreign-object (p-connection 'duckdb-api:duckdb-connection)
     (setf (mem-ref p-connection 'duckdb-api:duckdb-connection)
           (handle connection))
     (duckdb-api:duckdb-disconnect p-connection)))
