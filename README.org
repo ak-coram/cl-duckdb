@@ -90,8 +90,8 @@ Currently only Linux, BSDs, Windows and macOS are tested (x86-64).
   - [X] USMALLINT
   - [X] UINTEGER
   - [X] UBIGINT
-  - [ ] REAL (FLOAT)
-  - [ ] DOUBLE
+  - [X] REAL (FLOAT)
+  - [X] DOUBLE
   - [ ] BLOB
   - [ ] DATE
   - [ ] DECIMAL(s, p)

@@ -46,6 +46,8 @@
            #:duckdb-bind-null
            #:duckdb-bind-boolean
            #:duckdb-bind-varchar
+           #:duckdb-bind-float
+           #:duckdb-bind-double
            #:duckdb-bind-uint8
            #:duckdb-bind-uint16
            #:duckdb-bind-uint32

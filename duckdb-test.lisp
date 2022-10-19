@@ -70,7 +70,7 @@
                           ", 2.71::double AS double")
       nil
       (float double)
-    (is (eql (float 3.14) float))
+    (is (eql 3.14s0 float))
     (is (eql 2.71d0 double))))
 
 (test query-blob
@@ -207,3 +207,13 @@
         (a b)
       (is (string= a s))
       (is (eql (length s) b)))))
+
+(test bind-floats
+  (let ((f 3.14s0)
+        (d 2.71d0))
+    (test-query (str:concat "SELECT ?::float AS float"
+                            ", ?::double AS double")
+        (f d)
+        (float double)
+      (is (eql f float))
+      (is (eql d double)))))

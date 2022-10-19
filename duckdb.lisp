@@ -245,6 +245,12 @@
             (string (duckdb-api:duckdb-bind-varchar statement-handle
                                                     i
                                                     value))
+            (single-float (duckdb-api:duckdb-bind-float statement-handle
+                                                        i
+                                                        value))
+            (double-float (duckdb-api:duckdb-bind-double statement-handle
+                                                         i
+                                                         value))
             ;; 8-bit integers
             ((integer -128 127)
              (duckdb-api:duckdb-bind-int8 statement-handle i value))
