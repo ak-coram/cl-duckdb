@@ -53,14 +53,12 @@
   (with-foreign-slots ((lower upper) value (:struct duckdb-hugeint))
     (logior (ash upper 64) lower)))
 
-(defstruct hugeint
-  (lower 0 :type (integer 0 18446744073709551615))
-  (upper 0 :type (integer -9223372036854775808 9223372036854775807)))
-
-(defmethod translate-into-foreign-memory (value (type duckdb-hugeint-type) ptr)
-  (with-foreign-slots ((lower upper) ptr (:struct duckdb-hugeint))
-    (setf lower (hugeint-lower value)
-          upper (hugeint-upper value))))
+(defmethod translate-into-foreign-memory
+    (value (type duckdb-hugeint-type) ptr)
+  (let ((multiplier (if (minusp value) -1 1)))
+    (with-foreign-slots ((lower upper) ptr (:struct duckdb-hugeint))
+      (setf lower (ldb (byte 64 0) value)
+            upper (* multiplier (ldb (byte 64 64) value))))))
 
 (defcstruct (duckdb-uuid :class duckdb-uuid-type)
   (lower :uint64)
@@ -407,15 +405,5 @@
   (prepared-statement duckdb-prepared-statement)
   (param-idx idx)
   (val (:struct duckdb-hugeint)))
-
-(defun bind-hugeint (prepared-statement param-idx value)
-  (let* ((multiplier (if (minusp value) -1 1))
-         (hugeint-value (make-hugeint :lower (ldb (byte 64 0)
-                                                  value)
-                                      :upper (* multiplier (ldb (byte 64 64)
-                                                                value)))))
-    (duckdb-bind-hugeint prepared-statement
-                         param-idx
-                         hugeint-value)))
 
 

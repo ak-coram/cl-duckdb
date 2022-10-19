@@ -53,7 +53,7 @@
            #:duckdb-bind-int16
            #:duckdb-bind-int32
            #:duckdb-bind-int64
-           #:bind-hugeint
+           #:duckdb-bind-hugeint
            #:result-chunk-count
            #:result-get-chunk
            #:duckdb-validity-row-is-valid
