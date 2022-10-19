@@ -79,7 +79,7 @@ Currently only Linux, BSDs, Windows and macOS are tested (x86-64).
   - [X] UUID
 - [-] Support for binding built-in general-purpose types
   - [X] NULL
-  - [ ] VARCHAR
+  - [X] VARCHAR
   - [X] BOOLEAN
   - [X] TINYINT
   - [X] SMALLINT

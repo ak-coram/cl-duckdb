@@ -198,3 +198,12 @@
     (is (eql 4294967295 uinteger))
     (is (eql -9223372036854775808 bigint))
     (is (eql 18446744073709551615 ubigint))))
+
+(test bind-string
+  (let ((s "Árvíztűrő tükörfúrógép"))
+    (test-query (str:concat "SELECT t.s AS a, LENGTH(t.s) AS b "
+                            "FROM (SELECT ?::text AS s) AS t")
+        (s)
+        (a b)
+      (is (string= a s))
+      (is (eql (length s) b)))))

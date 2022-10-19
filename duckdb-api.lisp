@@ -361,6 +361,11 @@
   (param-idx idx)
   (val :bool))
 
+(defcfun duckdb-bind-varchar duckdb-state
+  (prepared-statement duckdb-prepared-statement)
+  (param-idx idx)
+  (val :string))
+
 (defcfun duckdb-bind-uint8 duckdb-state
   (prepared-statement duckdb-prepared-statement)
   (param-idx idx)
@@ -405,5 +410,3 @@
   (prepared-statement duckdb-prepared-statement)
   (param-idx idx)
   (val (:struct duckdb-hugeint)))
-
-

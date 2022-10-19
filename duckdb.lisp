@@ -242,6 +242,9 @@
             (boolean (duckdb-api:duckdb-bind-boolean statement-handle
                                                      i
                                                      value))
+            (string (duckdb-api:duckdb-bind-varchar statement-handle
+                                                    i
+                                                    value))
             ;; 8-bit integers
             ((integer -128 127)
              (duckdb-api:duckdb-bind-int8 statement-handle i value))
