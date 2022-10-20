@@ -14,7 +14,6 @@ jobs:
     name: ${{ matrix.lisp }} on ${{ matrix.os }} with duckdb ${{ matrix.duckdb }}
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
         lisp: [sbcl-bin, ccl-bin, ecl]
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -51,10 +50,12 @@ jobs:
           7z x libduckdb-windows-amd64.zip
 
       - name: Setup Lisp (Non-Windows)
+        continue-on-error: true
         uses: 40ants/setup-lisp@v2
         if: runner.os != 'Windows'
           
       - name: Setup sbcl-bin/2.2.6 (Windows)
+        continue-on-error: true
         uses: 40ants/setup-lisp@v2
         if: runner.os == 'Windows'
         env:
