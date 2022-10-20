@@ -13,13 +13,39 @@
 </p>
 #+end_html
 
-This is a CFFI wrapper around the [[https://duckdb.org/][DuckDB]] C API.
+This is a Common Lisp [[https://cffi.common-lisp.dev/][CFFI]] wrapper around the [[https://duckdb.org/][DuckDB]] C API.
+
+** Dependencies
+
+Currently the following Common Lisp implementations and operating
+systems are tested via [[https://github.com/ak-coram/cl-duckdb/blob/main/.github/workflows/CI.yml][CI]] on x86-64 (some BSDs are also known to
+work):
+
+- [[https://sbcl.org/][SBCL]] (Linux, Windows, macOS)
+- [[https://ccl.clozure.com/][CCL]] (Linux, macOS)
+- [[https://ecl.common-lisp.dev/][ECL]] (Linux, macOS)
+
+The following native libraries need to be installed in a location
+where CFFI can find them:
+
+- [[https://sourceware.org/libffi/][libffi]]
+- [[https://duckdb.org/][DuckDB]]
+
+** Installation
+
+cl-duckdb can now be installed via [[https://www.quicklisp.org/][Quicklisp]] from the [[https://ultralisp.org/][Ultralisp]]
+distribution:
+
+#+begin_src lisp
+  ;; Install the ultralisp distribution if you don't have it already
+  (ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)
+  ;; Load cl-duckdb
+  (ql:quickload :duckdb)
+#+end_src
 
 ** Development setup
 
-Currently only Linux, BSDs, Windows and macOS are tested (x86-64).
-
-- Install [[https://sbcl.org/][SBCL]], [[https://www.quicklisp.org/][Quicklisp]], [[https://sourceware.org/libffi/][libffi]] and of course [[https://duckdb.org/][DuckDB]].
+- Install [[https://www.quicklisp.org/][Quicklisp]]
 - Clone this repository and add it as a local Quicklisp project, for
   example:
 
@@ -50,6 +76,34 @@ Currently only Linux, BSDs, Windows and macOS are tested (x86-64).
   (asdf:test-system :duckdb)
   ;; Using FiveAM directly:
   (fiveam:run! :duckdb)
+#+end_src
+
+** Basic usage
+
+Please note that the API is experimental and subject to changes.
+
+#+begin_src lisp
+   ;; Use an in-memory transient database,
+   ;; DDB:INITIALIZE-DEFAULT-CONNECTION is recommended for REPL sessions
+   (ddb:with-transient-connection
+     ;; Create a new range table containing integers
+     (ddb::run "CREATE TABLE range (i INTEGER PRIMARY KEY)"
+               "CREATE SEQUENCE seq_range_i START 1")
+
+     ;; Use a prepared statement to populate the table with a 1000 values
+     (ddb:with-statement (statement "INSERT INTO range VALUES (nextval('seq_range_i'))")
+       (dotimes (_ 1000) (ddb:perform statement)))
+
+     ;; Solve Project Euler Problem 9
+     (let* ((euler9-query (str:concat "SELECT a.i * b.i * c.i AS solution "
+                                      "FROM range AS c "
+                                      "JOIN range AS b ON b.i < c.i "
+                                      "JOIN range AS a ON a.i < b.i "
+                                      "WHERE a.i + b.i + c.i = ? "
+                                      "AND a.i * a.i + b.i * b.i = c.i * c.i"))
+            (parameters '(1000))
+            (results (ddb:query euler9-query parameters)))
+       (format t "PE9 Solution: ~a~%" (ddb:get-result results 'solution 0))))
 #+end_src
 
 ** Roadmap
@@ -104,7 +158,7 @@ Currently only Linux, BSDs, Windows and macOS are tested (x86-64).
 - [ ] Support for binding nested / composite types
 - [ ] ...
 
-** License
+** Legal
 
 - Released under the MIT License, same as DuckDB.
 - [[https://en.wikipedia.org/wiki/File:Pair_of_mandarin_ducks.jpg][Source]] for README photo
