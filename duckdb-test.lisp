@@ -7,18 +7,13 @@
 (def-suite :duckdb)
 (in-suite :duckdb)
 
-(defun get-first-value (result key)
-  (aref (alexandria:assoc-value result key :test #'string=) 0))
-
 (defmacro test-query (query parameters result-syms &body body)
-  (alexandria:with-gensyms (db conn result)
+  (alexandria:with-gensyms (db conn results)
     `(ddb:with-open-database (,db)
        (ddb:with-open-connection (,conn ,db)
-         (let* ((,result (ddb:query ,query (list ,@parameters) :connection ,conn))
+         (let* ((,results (ddb:query ,query (list ,@parameters) :connection ,conn))
                 ,@(loop :for sym :in result-syms
-                        :collect
-                        `(,sym (get-first-value ,result
-                                                (str:downcase (quote ,sym))))))
+                        :collect `(,sym (ddb:get-result ,results (quote ,sym) 0))))
            ,@body)))))
 
 (test query-null
