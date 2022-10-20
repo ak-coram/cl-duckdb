@@ -356,11 +356,10 @@ cleanup."
     (with-execute (result statement)
       (translate-result result))))
 
-(defmacro run (&rest queries)
-  `(progn
-     ,@(loop :for q :in queries
-             :if (stringp q) :collect `(query ,q nil)
-             :else :collect `(query ,(car q) ,(cadr q)))))
+(defun run (&rest queries)
+  (loop :for q :in queries
+        :if (stringp q) :do (query q nil)
+          :else :do (query (car q) (cadr q))))
 
 (defun get-result (result column &optional n)
   (labels ((compare (a b) (string= a (str:param-case b))))
