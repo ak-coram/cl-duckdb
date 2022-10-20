@@ -217,3 +217,12 @@
         (float double)
       (is (eql f float))
       (is (eql d double)))))
+
+(test bind-decimal
+  (test-query (str:concat "SELECT ?::DECIMAL(38,38) AS a"
+                          ", ?::DECIMAL(7,6) AS b")
+      (1/3 355/113)
+      (a b)
+    (is (eql a (/ 33333333333333333333333333333333333333
+                  100000000000000000000000000000000000000)))
+    (is (eql b 3141592/1000000))))

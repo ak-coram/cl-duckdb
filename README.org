@@ -94,7 +94,7 @@ Currently only Linux, BSDs, Windows and macOS are tested (x86-64).
   - [X] DOUBLE
   - [ ] BLOB
   - [ ] DATE
-  - [ ] DECIMAL(s, p)
+  - [X] DECIMAL(s, p)
   - [ ] TIMESTAMP
   - [ ] TIMESTAMP WITH TIME ZONE
   - [ ] INTERVAL

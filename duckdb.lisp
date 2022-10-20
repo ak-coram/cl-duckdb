@@ -219,6 +219,11 @@
                      (parameter-count statement)
                      (length values))))))
 
+(defun rational-to-string (x n)
+  (multiple-value-bind (i r) (truncate x)
+    (let ((s (format nil "~d.~d" i (truncate (* (abs r) (expt 10 n))))))
+      (string-right-trim '(#\0) s))))
+
 (defun bind-parameters (statement values)
   (assert-parameter-count statement values)
   (let ((parameter-count (parameter-count statement))
@@ -251,6 +256,11 @@
             (double-float (duckdb-api:duckdb-bind-double statement-handle
                                                          i
                                                          value))
+            ;; Use max decimal width to bind rationals as varchar
+            (ratio (let ((s (rational-to-string value 38)))
+                     (duckdb-api:duckdb-bind-varchar statement-handle
+                                                     i
+                                                     s)))
             ;; 8-bit integers
             ((integer -128 127)
              (duckdb-api:duckdb-bind-int8 statement-handle i value))
