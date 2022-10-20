@@ -2,7 +2,8 @@
 
 (defpackage #:duckdb-api
   (:use #:cl #:cffi)
-  (:export #:get-ffi-type
+  (:export #:get-message
+           #:get-ffi-type
            #:duckdb-result
            #:p-duckdb-result
            #:p-duckdb-column
@@ -65,17 +66,25 @@
 (defpackage #:duckdb
   (:nicknames #:ddb)
   (:use #:cl #:cffi)
-  (:export #:open-database
+  (:export #:*connection*
+           #:open-database
            #:close-database
            #:connect
            #:disconnect
            #:prepare
            #:destroy-statement
            #:execute
+           #:perform
            #:destroy-result
            #:with-open-database
            #:with-open-connection
            #:with-statement
            #:with-execute
-           #:with-execute
-           #:query))
+           #:bind-parameters
+           #:initialize-default-connection
+           #:disconnect-default-connection
+           #:with-default-connection
+           #:with-transient-connection
+           #:query
+           #:run
+           #:get-result))

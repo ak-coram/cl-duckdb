@@ -2,9 +2,6 @@
 
 (in-package #:duckdb)
 
-(defun get-message (p-string)
-  (foreign-string-to-lisp (mem-ref p-string '(:pointer :string))))
-
 (define-condition duckdb-error (simple-error)
   ((database :initarg :database)
    (statement :initarg :statement)
@@ -26,8 +23,7 @@
     ((instance database) &key path)
   (with-foreign-object (p-database 'duckdb-api:duckdb-database)
     (with-foreign-object (p-error-message '(:pointer :string))
-      (let* ((path (or path ":memory:"))
-             ;; prefer duckdb-open-ext over duckdb-open for error message
+      (let* (;; prefer duckdb-open-ext over duckdb-open for error message
              (result (duckdb-api:duckdb-open-ext path
                                                  p-database
                                                  (null-pointer)
@@ -38,18 +34,23 @@
 
                   (path instance) path)
             (error 'duckdb-error
-                   :error-message (get-message p-error-message)))))))
+                   :error-message (duckdb-api:get-message p-error-message)))))))
 
 (defun open-database (&optional path)
-  (make-instance 'database :path path))
+  "Opens and returns database for PATH with \":memory:\" as default.
+See CLOSE-DATABASE for cleanup."
+  (make-instance 'database :path (or path ":memory:")))
 
 (defun close-database (database)
+  "Does resource cleanup for DATABASE, also see OPEN-DATABASE."
   (with-foreign-object (p-database 'duckdb-api:duckdb-database)
     (setf (mem-ref p-database 'duckdb-api:duckdb-database)
           (handle database))
     (duckdb-api:duckdb-close p-database)))
 
-(defmacro with-open-database ((database-var &optional path) &body body)
+(defmacro with-open-database ((database-var &key path) &body body)
+  "Opens database for PATH, binds it to DATABASE-VAR.
+The database is closed after BODY is evaluated."
   `(let ((,database-var (open-database ,path)))
      (unwind-protect
           (progn ,@body)
@@ -74,9 +75,12 @@
           (error 'duckdb-error :database database)))))
 
 (defun connect (database)
+  "Opens and returns new connection to DATABASE.
+See DISCONNECT for cleanup."
   (make-instance 'connection :database database))
 
 (defun disconnect (connection)
+  "Does resource cleanup for CONNECTION, also see CONNECT."
   (with-foreign-object (p-connection 'duckdb-api:duckdb-connection)
     (setf (mem-ref p-connection 'duckdb-api:duckdb-connection)
           (handle connection))
@@ -88,6 +92,44 @@
           (progn ,@body)
        (disconnect ,connection-var))))
 
+(defvar *connection* nil
+  "Used to refer to the current database connection.
+It is intended to make interactive use more convenient and is used as
+the default connection for functions where CONNECTION is an optional
+or a keyword parameter.")
+
+(defun initialize-default-connection (&optional path)
+  "Connects to database for PATH and sets the value of *CONNECTION*.
+Also see DISCONNECT-DEFAULT-CONNECTION for cleanup."
+  (setf *connection* (connect (open-database path))))
+
+(defun disconnect-default-connection ()
+  "Disconnects *CONNECTION* and also closes the related database.
+Also see INITIALIZE-DEFAULT-CONNECTION for initializing *CONNECTION*."
+  (when *connection*
+    (let ((database (slot-value *connection* 'database)))
+      (disconnect *connection*)
+      (close-database database)
+      (setf *connection* nil))))
+
+(defmacro with-default-connection ((database) &body body)
+  "Connects to DATABASE and dynamically binds *CONNECTION*.
+The connection is disconnected after BODY is evaluated."
+  `(let ((*connection* (connect ,database)))
+     (unwind-protect
+          (progn ,@body)
+       (disconnect *connection*))))
+
+(defmacro with-transient-connection (&body body)
+  "Connects to new in-memory database and dynamically binds *CONNECTION*.
+The connection and the database are cleaned up after BODY is evaluated."
+  (alexandria:with-gensyms (database)
+    `(let* ((,database (open-database)))
+       (unwind-protect
+            (with-default-connection (,database)
+              (progn ,@body))
+         (close-database ,database)))))
+
 ;;; Statements
 
 (defclass statement ()
@@ -97,7 +139,7 @@
    (parameter-types :initarg :parameter-types :accessor parameter-types)
    (handle :accessor handle :initarg :handle)))
 
-(defun prepare (connection query)
+(defun prepare (query &key (connection *connection*))
   (with-foreign-object (p-statement 'duckdb-api:duckdb-prepared-statement)
     (with-foreign-string (p-query query)
       (let* ((result (duckdb-api:duckdb-prepare (handle connection)
@@ -127,8 +169,11 @@
           (handle statement))
     (duckdb-api:duckdb-destroy-prepare p-statement)))
 
-(defmacro with-statement ((statement-var connection query) &body body)
-  `(let ((,statement-var (prepare ,connection ,query)))
+(defmacro with-statement
+    ((statement-var query &key connection) &body body)
+  `(let ((,statement-var (prepare ,query
+                                  ,@(when connection
+                                      `(:connection ,connection)))))
      (unwind-protect
           (progn ,@body)
        (destroy-statement ,statement-var))))
@@ -147,16 +192,36 @@
                  :handle p-result))
 
 (defun execute (statement)
+  "Runs STATEMENT and returns RESULT instance.
+DESTROY-RESULT must be called on the returned value for resource
+cleanup."
   (let ((connection (connection statement))
         (p-result (foreign-alloc '(:struct duckdb-api:duckdb-result))))
     (if (eq (duckdb-api:duckdb-execute-prepared (handle statement)
                                                 p-result)
             :duckdb-success)
         (make-result connection statement p-result)
-        (error 'duckdb-error
-               :database (database connection)
-               :statement statement
-               :error-message (duckdb-api:duckdb-result-error p-result)))))
+        (let ((error-message (duckdb-api:duckdb-result-error p-result)))
+          (duckdb-api:duckdb-destroy-result p-result)
+          (foreign-free p-result)
+          (error 'duckdb-error
+                 :database (database connection)
+                 :statement statement
+                 :error-message error-message)))))
+
+(defun perform (statement)
+  "Same as EXECUTE, but doesn't return any results and needs no cleanup."
+  (with-foreign-object (p-result '(:struct duckdb-api:duckdb-result))
+    (if (eq (duckdb-api:duckdb-execute-prepared (handle statement)
+                                                p-result)
+            :duckdb-success)
+        (duckdb-api:duckdb-destroy-result p-result)
+        (let ((error-message (duckdb-api:duckdb-result-error p-result)))
+          (duckdb-api:duckdb-destroy-result p-result)
+          (error 'duckdb-error
+                 :database (database (connection statement))
+                 :statement statement
+                 :error-message error-message)))))
 
 (defun destroy-result (result)
   (let ((p-result (handle result)))
@@ -258,9 +323,7 @@
                                                          value))
             ;; Use max decimal width to bind rationals as varchar
             (ratio (let ((s (rational-to-string value 38)))
-                     (duckdb-api:duckdb-bind-varchar statement-handle
-                                                     i
-                                                     s)))
+                     (duckdb-api:duckdb-bind-varchar statement-handle i s)))
             ;; 8-bit integers
             ((integer -128 127)
              (duckdb-api:duckdb-bind-int8 statement-handle i value))
@@ -286,8 +349,28 @@
                       170141183460469231731687303715884105727)
              (duckdb-api:duckdb-bind-hugeint statement-handle i value))))))
 
-(defun query (connection query &rest parameters)
-  (with-statement (statement connection query)
-    (bind-parameters statement parameters)
+(defun query (query parameters &key (connection *connection*))
+  (with-statement (statement query :connection connection)
+    (when parameters
+      (bind-parameters statement parameters))
     (with-execute (result statement)
       (translate-result result))))
+
+(defmacro run (&rest queries)
+  `(progn
+     ,@(loop :for q :in queries
+             :if (stringp q) :collect `(query ,q nil)
+             :else :collect `(query ,(car q) ,(cadr q)))))
+
+(defun get-result (result column &optional n)
+  (labels ((compare (a b) (string= a (str:param-case b))))
+    (let ((result-values (if (stringp column)
+                             (alexandria:assoc-value result
+                                                     column
+                                                     :test #'string=)
+                             (alexandria:assoc-value result
+                                                     (str:downcase column)
+                                                     :test #'compare))))
+      (if n
+          (aref result-values n)
+          result-values))))

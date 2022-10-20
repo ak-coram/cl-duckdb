@@ -14,7 +14,7 @@
   (alexandria:with-gensyms (db conn result)
     `(ddb:with-open-database (,db)
        (ddb:with-open-connection (,conn ,db)
-         (let* ((,result (ddb:query ,conn ,query ,@parameters))
+         (let* ((,result (ddb:query ,query (list ,@parameters) :connection ,conn))
                 ,@(loop :for sym :in result-syms
                         :collect
                         `(,sym (get-first-value ,result

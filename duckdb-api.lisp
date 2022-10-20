@@ -10,6 +10,9 @@
 
 (use-foreign-library duckdb-lib)
 
+(defun get-message (p-string)
+  (foreign-string-to-lisp (mem-ref p-string '(:pointer :string))))
+
 (defctype duckdb-database (:pointer :void))
 (defctype duckdb-connection (:pointer :void))
 (defctype duckdb-prepared-statement (:pointer :void))
