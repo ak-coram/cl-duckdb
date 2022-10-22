@@ -293,7 +293,7 @@ cleanup."
   "Generates dispatch for parameter bindings.
 This macro captures variables from the surrounding scope of
 BIND-PARAMETERS intentionally and is only used to make parameter
-binding a bit more consice. It is not intended for any other use."
+binding a bit more concise. It is not intended for any other use."
   (let ((parameter-binding-types
           '(;; No null type in DuckDB, dispatch based on parameter
             ;; value type
