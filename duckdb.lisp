@@ -289,6 +289,66 @@ cleanup."
     (let ((s (format nil "~d.~d" i (truncate (* (abs r) (expt 10 n))))))
       (string-right-trim '(#\0) s))))
 
+(defmacro generate-parameter-binding-dispatch ()
+  "Generates dispatch for parameter bindings.
+This macro captures variables from the surrounding scope of
+BIND-PARAMETERS intentionally and is only used to make parameter
+binding a bit more consice. It is not intended for any other use."
+  (let ((parameter-binding-types
+          '(;; No null type in DuckDB, dispatch based on parameter
+            ;; value type
+            (:_ null (duckdb-api:duckdb-bind-null statement-handle i))
+            (:duckdb-boolean boolean
+             (duckdb-api:duckdb-bind-boolean statement-handle i value))
+            (:duckdb-varchar string
+             (duckdb-api:duckdb-bind-varchar statement-handle i value))
+            (:duckdb-float single-float
+             (duckdb-api:duckdb-bind-float statement-handle i value))
+            (:duckdb-double double-float
+             (duckdb-api:duckdb-bind-double statement-handle i value))
+            ;; Use max decimal width to bind rationals as varchar,
+            ;; don't include :duckdb-decimal here as the CL type is
+            ;; preferable to determine the the best way to bind
+            ;; decimal values (preferably using one of the integer
+            ;; binding functions).
+            (:_ ratio (let ((s (rational-to-string value 38)))
+                        (duckdb-api:duckdb-bind-varchar statement-handle i s)))
+            ;; 8-bit integers
+            (:duckdb-tinyint (integer -128 127)
+             (duckdb-api:duckdb-bind-int8 statement-handle i value))
+            (:duckdb-utinyint (integer 0 255)
+             (duckdb-api:duckdb-bind-uint8 statement-handle i value))
+            ;; 16-bit integers
+            (:duckdb-smallint (integer -32768 32767)
+             (duckdb-api:duckdb-bind-int16 statement-handle i value))
+            (:duckdb-usmallint (integer 0 65535)
+             (duckdb-api:duckdb-bind-uint16 statement-handle i value))
+            ;; 32-bit integers
+            (:duckdb-integer (integer -2147483648 2147483647)
+             (duckdb-api:duckdb-bind-int32 statement-handle i value))
+            (:duckdb-uinteger (integer 0 4294967295)
+             (duckdb-api:duckdb-bind-uint32 statement-handle i value))
+            ;; 64-bit integers
+            (:duckdb-bigint (integer -9223372036854775808 9223372036854775807)
+             (duckdb-api:duckdb-bind-int64 statement-handle i value))
+            (:duckdb-ubigint (integer 0 18446744073709551615)
+             (duckdb-api:duckdb-bind-uint64 statement-handle i value))
+            ;; hugeint
+            (:duckdb-hugeint (integer
+                              -170141183460469231731687303715884105727
+                              170141183460469231731687303715884105727)
+             (duckdb-api:duckdb-bind-hugeint statement-handle i value)))))
+    `(case duckdb-type
+       ,@(loop :for (type _ binding-form) :in parameter-binding-types
+               :unless (eql type :_)    ; :_ is used to skip
+                 :collect `(,type ,binding-form))
+       ;; In some cases such as "SELECT ?" the type can not be
+       ;; determined in advance by DuckDB, so we use the type of the
+       ;; parameter value to bind it.
+       (t (typecase value
+            ,@(loop :for (_ cl-type binding-form) :in parameter-binding-types
+                    :collect `(,cl-type ,binding-form)))))))
+
 (defun bind-parameters (statement values)
   (assert-parameter-count statement values)
   (let ((parameter-count (parameter-count statement))
@@ -304,50 +364,7 @@ cleanup."
       :for i :from 1 :to parameter-count
       :for value :in values
       :for duckdb-type :in parameter-types
-      :do (typecase value
-            ;; Treat nil as false for duckdb-boolean parameters
-            (null (if (eql duckdb-type :duckdb-boolean)
-                      (duckdb-api:duckdb-bind-boolean statement-handle i value)
-                      (duckdb-api:duckdb-bind-null statement-handle i)))
-            (boolean (duckdb-api:duckdb-bind-boolean statement-handle
-                                                     i
-                                                     value))
-            (string (duckdb-api:duckdb-bind-varchar statement-handle
-                                                    i
-                                                    value))
-            (single-float (duckdb-api:duckdb-bind-float statement-handle
-                                                        i
-                                                        value))
-            (double-float (duckdb-api:duckdb-bind-double statement-handle
-                                                         i
-                                                         value))
-            ;; Use max decimal width to bind rationals as varchar
-            (ratio (let ((s (rational-to-string value 38)))
-                     (duckdb-api:duckdb-bind-varchar statement-handle i s)))
-            ;; 8-bit integers
-            ((integer -128 127)
-             (duckdb-api:duckdb-bind-int8 statement-handle i value))
-            ((integer 0 255)
-             (duckdb-api:duckdb-bind-uint8 statement-handle i value))
-            ;; 16-bit integers
-            ((integer -32768 32767)
-             (duckdb-api:duckdb-bind-int16 statement-handle i value))
-            ((integer 0 65535)
-             (duckdb-api:duckdb-bind-uint16 statement-handle i value))
-            ;; 32-bit integers
-            ((integer -2147483648 2147483647)
-             (duckdb-api:duckdb-bind-int32 statement-handle i value))
-            ((integer 0 4294967295)
-             (duckdb-api:duckdb-bind-uint32 statement-handle i value))
-            ;; 64-bit integers
-            ((integer -9223372036854775808 9223372036854775807)
-             (duckdb-api:duckdb-bind-int64 statement-handle i value))
-            ((integer 0 18446744073709551615)
-             (duckdb-api:duckdb-bind-uint64 statement-handle i value))
-            ;; hugeint
-            ((integer -170141183460469231731687303715884105727
-                      170141183460469231731687303715884105727)
-             (duckdb-api:duckdb-bind-hugeint statement-handle i value))))))
+      :do (generate-parameter-binding-dispatch))))
 
 (defun query (query parameters &key (connection *connection*))
   (with-statement (statement query :connection connection)
