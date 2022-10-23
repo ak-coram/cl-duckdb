@@ -123,6 +123,14 @@
     (multiple-value-bind (secs remainder) (floor micros 1000000)
       (local-time:unix-to-timestamp secs :nsec (* remainder 1000)))))
 
+(defmethod translate-into-foreign-memory
+    (value (type duckdb-timestamp-type) ptr)
+  (with-foreign-slots ((micros) ptr (:struct duckdb-timestamp))
+    (setf micros (+ (* 1000000 (+ (* (+ (local-time:day-of value) 11017)
+                                     24 60 60)
+                                  (local-time:sec-of value)))
+                    (round (local-time:nsec-of value) 1000)))))
+
 (defcstruct (duckdb-interval :class duckdb-interval-type)
   (months :int32)
   (days :int32)
@@ -439,3 +447,8 @@
   (prepared-statement duckdb-prepared-statement)
   (param-idx idx)
   (val (:struct duckdb-date)))
+
+(defcfun duckdb-bind-timestamp :void
+  (prepared-statement duckdb-prepared-statement)
+  (param-idx idx)
+  (val (:struct duckdb-timestamp)))

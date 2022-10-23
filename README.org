@@ -149,8 +149,8 @@ Please note that the API is experimental and subject to changes.
   - [X] BLOB
   - [X] DATE
   - [X] DECIMAL(s, p)
-  - [ ] TIMESTAMP
-  - [ ] TIMESTAMP WITH TIME ZONE
+  - [X] TIMESTAMP
+  - [X] TIMESTAMP WITH TIME ZONE
   - [ ] INTERVAL
   - [ ] TIME
   - [ ] UUID

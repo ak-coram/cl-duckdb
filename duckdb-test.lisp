@@ -235,3 +235,8 @@
         (today)
         (a)
       (is (local-time:timestamp= a today)))))
+
+(test bind-timestamp
+  (let ((now (local-time:now)))
+    (test-query (str:concat "SELECT ?::timestamp AS a") (now) (a)
+      (is (local-time:timestamp= a now)))))
