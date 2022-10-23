@@ -147,7 +147,7 @@ Please note that the API is experimental and subject to changes.
   - [X] REAL (FLOAT)
   - [X] DOUBLE
   - [X] BLOB
-  - [ ] DATE
+  - [X] DATE
   - [X] DECIMAL(s, p)
   - [ ] TIMESTAMP
   - [ ] TIMESTAMP WITH TIME ZONE

@@ -103,6 +103,11 @@
   (with-foreign-slots ((days) value (:struct duckdb-date))
     (local-time:make-timestamp :day (- days 11017))))
 
+(defmethod translate-into-foreign-memory
+    (value (type duckdb-date-type) ptr)
+  (with-foreign-slots ((days) ptr (:struct duckdb-date))
+    (setf days (+ (local-time:day-of value) 11017))))
+
 (defcstruct (duckdb-time :class duckdb-time-type)
   (micros :int64))
 
@@ -429,3 +434,8 @@
   (prepared-statement duckdb-prepared-statement)
   (param-idx idx)
   (val (:struct duckdb-hugeint)))
+
+(defcfun duckdb-bind-date :void
+  (prepared-statement duckdb-prepared-statement)
+  (param-idx idx)
+  (val (:struct duckdb-date)))

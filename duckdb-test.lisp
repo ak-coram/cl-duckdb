@@ -228,3 +228,10 @@
     (is (eql a (/ 33333333333333333333333333333333333333
                   100000000000000000000000000000000000000)))
     (is (eql b 3141592/1000000))))
+
+(test bind-date
+  (let ((today (local-time:today)))
+    (test-query (str:concat "SELECT ?::date AS a")
+        (today)
+        (a)
+      (is (local-time:timestamp= a today)))))
