@@ -10,8 +10,7 @@
    (error-message :initarg :error-message
                   :accessor error-message))
   (:report (lambda (condition stream)
-             (format stream "~A."
-                     (error-message condition)))))
+             (format stream "~A" (error-message condition)))))
 
 ;;; Databases
 
@@ -281,8 +280,8 @@ cleanup."
              :statement statement
              :error-message
              (format nil "Failed to bind ~d value~:p to ~d parameter~:p."
-                     (parameter-count statement)
-                     (length values))))))
+                     (length values)
+                     (parameter-count statement))))))
 
 (defun rational-to-string (x n)
   (multiple-value-bind (i r) (truncate x)
@@ -375,16 +374,19 @@ binding a bit more concise. It is not intended for any other use."
 
 (defun run (&rest queries)
   (loop :for q :in queries
-        :if (stringp q) :do (query q nil)
-          :else :do (query (car q) (cadr q))))
+        :if (stringp q) :do (with-statement (statement q)
+                              (perform statement))
+          :else :do (with-statement (statement (car q))
+                      (bind-parameters statement (cadr q))
+                      (perform statement))))
 
-(defun get-result (result column &optional n)
+(defun get-result (results column &optional n)
   (labels ((compare (a b) (string= a (str:param-case b))))
     (let ((result-values (if (stringp column)
-                             (alexandria:assoc-value result
+                             (alexandria:assoc-value results
                                                      column
                                                      :test #'string=)
-                             (alexandria:assoc-value result
+                             (alexandria:assoc-value results
                                                      (str:downcase column)
                                                      :test #'compare))))
       (if n
