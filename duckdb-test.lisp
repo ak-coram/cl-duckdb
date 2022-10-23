@@ -203,6 +203,13 @@
       (is (string= a s))
       (is (eql (length s) b)))))
 
+(test bind-blob
+  (let ((s "Árvíztűrő tükörfúrógép"))
+    (test-query (str:concat "SELECT decode(?::blob) AS a")
+        ((babel:string-to-octets s))
+        (a)
+      (is (string= a s)))))
+
 (test bind-floats
   (let ((f 3.14s0)
         (d 2.71d0))

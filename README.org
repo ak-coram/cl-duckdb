@@ -146,7 +146,7 @@ Please note that the API is experimental and subject to changes.
   - [X] UBIGINT
   - [X] REAL (FLOAT)
   - [X] DOUBLE
-  - [ ] BLOB
+  - [X] BLOB
   - [ ] DATE
   - [X] DECIMAL(s, p)
   - [ ] TIMESTAMP

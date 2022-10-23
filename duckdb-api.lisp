@@ -369,6 +369,12 @@
   (param-idx idx)
   (val :string))
 
+(defcfun duckdb-bind-blob duckdb-state
+  (prepared-statement duckdb-prepared-statement)
+  (param-idx idx)
+  (data (:pointer :void))
+  (length idx))
+
 (defcfun duckdb-bind-float duckdb-state
   (prepared-statement duckdb-prepared-statement)
   (param-idx idx)

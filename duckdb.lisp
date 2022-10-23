@@ -301,6 +301,10 @@ binding a bit more concise. It is not intended for any other use."
              (duckdb-api:duckdb-bind-boolean statement-handle i value))
             (:duckdb-varchar string
              (duckdb-api:duckdb-bind-varchar statement-handle i value))
+            (:duckdb-blob (vector (unsigned-byte 8))
+             (let ((length (length value)))
+               (with-foreign-array (ptr value `(:array :uint8 ,length))
+                 (duckdb-api:duckdb-bind-blob statement-handle i ptr length))))
             (:duckdb-float single-float
              (duckdb-api:duckdb-bind-float statement-handle i value))
             (:duckdb-double double-float
