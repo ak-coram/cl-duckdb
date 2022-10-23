@@ -20,8 +20,6 @@ jobs:
         duckdb: [0.5.1]
         exclude:
           - os: windows-latest
-            lisp: ccl-bin
-          - os: windows-latest
             lisp: ecl
     env:
       LISP: ${{ matrix.lisp }}
@@ -57,9 +55,14 @@ jobs:
       - name: Setup sbcl-bin/2.2.6 (Windows)
         continue-on-error: true
         uses: 40ants/setup-lisp@v2
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.lisp == 'sbcl-bin'
         env:
           LISP: sbcl-bin/2.2.6
+
+      - name: Setup Lisp (Windows)
+        continue-on-error: true
+        uses: 40ants/setup-lisp@v2
+        if: runner.os == 'Windows' && matrix.lisp != 'sbcl-bin'
           
       - name: Run tests (Non-Windows)
         if: runner.os != 'Windows'
