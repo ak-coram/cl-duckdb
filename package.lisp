@@ -61,6 +61,7 @@
            #:duckdb-bind-hugeint
            #:duckdb-bind-date
            #:duckdb-bind-timestamp
+           #:duckdb-bind-time
            #:result-chunk-count
            #:result-get-chunk
            #:duckdb-validity-row-is-valid

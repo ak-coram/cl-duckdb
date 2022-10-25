@@ -152,7 +152,7 @@ Please note that the API is experimental and subject to changes.
   - [X] TIMESTAMP
   - [X] TIMESTAMP WITH TIME ZONE
   - [ ] INTERVAL
-  - [ ] TIME
+  - [X] TIME
   - [X] UUID
 - [ ] Support for querying nested / composite types
 - [ ] Support for binding nested / composite types

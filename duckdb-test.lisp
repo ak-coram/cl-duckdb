@@ -243,5 +243,11 @@
 
 (test bind-uuid
   (let ((uuid (uuid:make-v4-uuid)))
-    (test-query (str:concat "SELECT ?::uuid AS a") (uuid) (a)
+    (test-query "SELECT ?::uuid AS a" (uuid) (a)
       (is (uuid:uuid= a uuid)))))
+
+(test bind-time
+  (let ((d (local-time-duration:duration :week 1 :day 1 :hour 1 :minute 1 :sec 1)))
+    (test-query "SELECT ?::time AS time" (d)
+        (time)
+      (local-time-duration:duration= time d))))

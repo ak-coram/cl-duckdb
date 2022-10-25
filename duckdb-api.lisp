@@ -115,6 +115,12 @@
   (with-foreign-slots ((micros) value (:struct duckdb-time))
     (local-time-duration:duration :nsec (* micros 1000))))
 
+(defmethod translate-into-foreign-memory
+    (value (type duckdb-time-type) ptr)
+  (with-foreign-slots ((micros) ptr (:struct duckdb-time))
+    (setf micros (round (local-time-duration:duration-as value :nsec)
+                        1000))))
+
 (defcstruct (duckdb-timestamp :class duckdb-timestamp-type)
   (micros :int64))
 
@@ -452,3 +458,8 @@
   (prepared-statement duckdb-prepared-statement)
   (param-idx idx)
   (val (:struct duckdb-timestamp)))
+
+(defcfun duckdb-bind-time :void
+  (prepared-statement duckdb-prepared-statement)
+  (param-idx idx)
+  (val (:struct duckdb-time)))

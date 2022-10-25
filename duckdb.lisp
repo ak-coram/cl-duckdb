@@ -345,6 +345,8 @@ binding a bit more concise. It is not intended for any other use."
              (duckdb-api:duckdb-bind-date statement-handle i value))
             (:duckdb-timestamp local-time:timestamp
              (duckdb-api:duckdb-bind-timestamp statement-handle i value))
+            (:duckdb-time local-time-duration:duration
+             (duckdb-api:duckdb-bind-time statement-handle i value))
             (:duckdb-uuid uuid:uuid
              (let ((s (uuid:print-bytes nil value)))
                (duckdb-api:duckdb-bind-varchar statement-handle i s))))))
