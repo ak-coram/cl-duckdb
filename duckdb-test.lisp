@@ -240,3 +240,8 @@
   (let ((now (local-time:now)))
     (test-query (str:concat "SELECT ?::timestamp AS a") (now) (a)
       (is (local-time:timestamp= a now)))))
+
+(test bind-uuid
+  (let ((uuid (uuid:make-v4-uuid)))
+    (test-query (str:concat "SELECT ?::uuid AS a") (uuid) (a)
+      (is (uuid:uuid= a uuid)))))

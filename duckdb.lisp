@@ -344,7 +344,10 @@ binding a bit more concise. It is not intended for any other use."
             (:duckdb-date local-time:date
              (duckdb-api:duckdb-bind-date statement-handle i value))
             (:duckdb-timestamp local-time:timestamp
-             (duckdb-api:duckdb-bind-timestamp statement-handle i value)))))
+             (duckdb-api:duckdb-bind-timestamp statement-handle i value))
+            (:duckdb-uuid uuid:uuid
+             (let ((s (uuid:print-bytes nil value)))
+               (duckdb-api:duckdb-bind-varchar statement-handle i s))))))
     `(case duckdb-type
        ,@(loop :for (type _ binding-form) :in parameter-binding-types
                :unless (eql type :_)    ; :_ is used to skip
