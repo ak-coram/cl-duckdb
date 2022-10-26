@@ -357,7 +357,7 @@ binding a bit more concise. It is not intended for any other use."
        ;; In some cases such as "SELECT ?" the type can not be
        ;; determined in advance by DuckDB, so we use the type of the
        ;; parameter value to bind it.
-       (t (typecase value
+       (t (etypecase value
             ,@(loop :for (_ cl-type binding-form) :in parameter-binding-types
                     :collect `(,cl-type ,binding-form)))))))
 
