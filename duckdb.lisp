@@ -405,3 +405,47 @@ binding a bit more concise. It is not intended for any other use."
       (if n
           (aref result-values n)
           result-values))))
+
+;;; Appenders
+
+(defclass appender ()
+  ((connection :initarg :connection :accessor connection)
+   (schema :initarg :schema)
+   (table :initarg :table)
+   (handle :accessor handle :initarg :handle)))
+
+(defun create-appender (schema table &key (connection *connection*))
+  (with-foreign-object (p-appender 'duckdb-api:duckdb-appender)
+    (let ((p-schema (if schema (foreign-string-alloc schema)
+                        (null-pointer))))
+      (unwind-protect
+           (with-foreign-string (p-table table)
+             (let* ((result (duckdb-api:duckdb-appender-create (handle connection)
+                                                               p-schema
+                                                               p-table
+                                                               p-appender))
+                    (appender (mem-ref p-appender 'duckdb-api:duckdb-appender)))
+               (if (eq result :duckdb-success)
+                   (make-instance 'appender
+                                  :connection connection
+                                  :schema schema
+                                  :table table
+                                  :handle appender)
+                   (error 'duckdb-error
+                          :database (database connection)
+                          :error-message (duckdb-api:duckdb-appender-error appender)))))
+        (unless (null-pointer-p p-schema)
+          (foreign-string-free p-schema))))))
+
+(defun destroy-appender (appender)
+  (with-foreign-object (p-appender 'duckdb-api:duckdb-appender)
+    (setf (mem-ref p-appender 'duckdb-api:duckdb-appender)
+          (handle appender))
+    (duckdb-api:duckdb-appender-destroy p-appender)))
+
+(defmacro with-appender ((appender-var schema table &key connection) &body body)
+  `(let ((,appender-var (create-appender ,schema ,table
+                                         ,@(when connection
+                                             `(:connection ,connection)))))
+     (unwind-protect (progn ,@body)
+       (destroy-appender ,appender-var))))

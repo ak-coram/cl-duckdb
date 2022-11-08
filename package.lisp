@@ -65,7 +65,32 @@
            #:result-chunk-count
            #:result-get-chunk
            #:duckdb-validity-row-is-valid
-           #:get-vector-type))
+           #:get-vector-type
+           #:duckdb-appender-create
+           #:duckdb-appender-error
+           #:duckdb-appender-flush
+           #:duckdb-appender-close
+           #:duckdb-appender-destroy
+           #:duckdb-appender-begin-row
+           #:duckdb-appender-end-row
+           #:duckdb-append-null
+           #:duckdb-append-boolean
+           #:duckdb-append-varchar
+           #:duckdb-append-blob
+           #:duckdb-append-float
+           #:duckdb-append-double
+           #:duckdb-append-uint8
+           #:duckdb-append-uint16
+           #:duckdb-append-uint32
+           #:duckdb-append-uint64
+           #:duckdb-append-int8
+           #:duckdb-append-int16
+           #:duckdb-append-int32
+           #:duckdb-append-int64
+           #:duckdb-append-hugeint
+           #:duckdb-append-date
+           #:duckdb-append-timestamp
+           #:duckdb-append-time))
 
 (defpackage #:duckdb
   (:nicknames #:ddb)
@@ -91,4 +116,5 @@
            #:with-transient-connection
            #:query
            #:run
-           #:get-result))
+           #:get-result
+           #:with-appender))

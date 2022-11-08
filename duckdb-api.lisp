@@ -463,3 +463,100 @@
   (prepared-statement duckdb-prepared-statement)
   (param-idx idx)
   (val (:struct duckdb-time)))
+
+(defcfun duckdb-appender-create duckdb-state
+  (connection duckdb-connection)
+  (schema :string)
+  (table :string)
+  (out-appender duckdb-appender))
+
+(defcfun duckdb-appender-error :string
+  (appender duckdb-appender))
+
+(defcfun duckdb-appender-flush duckdb-state
+  (appender duckdb-appender))
+
+(defcfun duckdb-appender-close duckdb-state
+  (appender duckdb-appender))
+
+(defcfun duckdb-appender-destroy duckdb-state
+  (appender (:pointer duckdb-appender)))
+
+(defcfun duckdb-appender-begin-row duckdb-state
+  (appender duckdb-appender))
+
+(defcfun duckdb-appender-end-row duckdb-state
+  (appender duckdb-appender))
+
+(defcfun duckdb-append-null duckdb-state
+  (appender duckdb-appender))
+
+(defcfun duckdb-append-boolean duckdb-state
+  (appender duckdb-appender)
+  (val :bool))
+
+(defcfun duckdb-append-varchar duckdb-state
+  (appender duckdb-appender)
+  (val :string))
+
+(defcfun duckdb-append-blob duckdb-state
+  (appender duckdb-appender)
+  (data (:pointer :void))
+  (length idx))
+
+(defcfun duckdb-append-float duckdb-state
+  (appender duckdb-appender)
+  (val :float))
+
+(defcfun duckdb-append-double duckdb-state
+  (appender duckdb-appender)
+  (val :double))
+
+(defcfun duckdb-append-uint8 duckdb-state
+  (appender duckdb-appender)
+  (val :uint8))
+
+(defcfun duckdb-append-uint16 duckdb-state
+  (appender duckdb-appender)
+  (val :uint16))
+
+(defcfun duckdb-append-uint32 duckdb-state
+  (appender duckdb-appender)
+  (val :uint32))
+
+(defcfun duckdb-append-uint64 duckdb-state
+  (appender duckdb-appender)
+  (val :uint64))
+
+(defcfun duckdb-append-int8 duckdb-state
+  (appender duckdb-appender)
+  (val :int8))
+
+(defcfun duckdb-append-int16 duckdb-state
+  (appender duckdb-appender)
+  (val :int16))
+
+(defcfun duckdb-append-int32 duckdb-state
+  (appender duckdb-appender)
+  (val :int32))
+
+(defcfun duckdb-append-int64 duckdb-state
+  (appender duckdb-appender)
+  (val :int64))
+
+(defcfun duckdb-append-hugeint :void ; TODO: duckdb-state doesn't work
+  (appender duckdb-appender)
+  (val (:struct duckdb-hugeint)))
+
+(defcfun duckdb-append-date :void
+  (appender duckdb-appender)
+  (val (:struct duckdb-date)))
+
+(defcfun duckdb-append-timestamp :void
+  (appender duckdb-appender)
+  (val (:struct duckdb-timestamp)))
+
+(defcfun duckdb-append-time :void
+  (appender duckdb-appender)
+  (val (:struct duckdb-time)))
+
