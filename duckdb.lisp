@@ -431,9 +431,11 @@ binding a bit more concise. It is not intended for any other use."
                                   :schema schema
                                   :table table
                                   :handle appender)
-                   (error 'duckdb-error
-                          :database (database connection)
-                          :error-message (duckdb-api:duckdb-appender-error appender)))))
+                   (let ((error-message (duckdb-api:duckdb-appender-error appender)))
+                     (duckdb-api:duckdb-appender-destroy p-appender)
+                     (error 'duckdb-error
+                            :database (database connection)
+                            :error-message error-message)))))
         (unless (null-pointer-p p-schema)
           (foreign-string-free p-schema))))))
 
