@@ -297,8 +297,17 @@ binding a bit more concise. It is not intended for any other use."
           '(;; No null type in DuckDB, dispatch based on parameter
             ;; value type
             (:_ null (duckdb-api:duckdb-bind-null statement-handle i))
+            ;; Handle keywords for boolean and NULL
+            (:_ keyword
+             (ecase value
+               (:null (duckdb-api:duckdb-bind-null statement-handle i))
+               (:false (duckdb-api:duckdb-bind-boolean statement-handle i nil))
+               (:true (duckdb-api:duckdb-bind-boolean statement-handle i t))))
             (:duckdb-boolean boolean
-             (duckdb-api:duckdb-bind-boolean statement-handle i value))
+             (case value
+               (:false (duckdb-api:duckdb-bind-boolean statement-handle i nil))
+               ;; :TRUE is treated as T in the clause below
+               (t (duckdb-api:duckdb-bind-boolean statement-handle i value))))
             (:duckdb-varchar string
              (duckdb-api:duckdb-bind-varchar statement-handle i value))
             (:duckdb-blob (vector (unsigned-byte 8))
@@ -353,7 +362,15 @@ binding a bit more concise. It is not intended for any other use."
     `(case duckdb-type
        ,@(loop :for (type _ binding-form) :in parameter-binding-types
                :unless (eql type :_)    ; :_ is used to skip
-                 :collect `(,type ,binding-form))
+                 :collect `(,type
+                            ;; Handle binding NULL with the exception
+                            ;; of NIL being bound as FALSE for
+                            ;; booleans:
+                            (if (or ,(unless (eql type :duckdb-boolean)
+                                       `(null value))
+                                    (eql value :null))
+                                (duckdb-api:duckdb-bind-null statement-handle i)
+                                ,binding-form)))
        ;; In some cases such as "SELECT ?" the type can not be
        ;; determined in advance by DuckDB, so we use the type of the
        ;; parameter value to bind it.

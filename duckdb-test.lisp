@@ -157,11 +157,25 @@
     (is-true a)
     (is (null b))))
 
+(test bind-null-keyword
+  (test-query "SELECT ?::boolean IS NULL AS a, ? AS b" (:null :null)
+      (a b)
+    (is-true a)
+    (is (null b))))
+
 (test bind-boolean
   (test-query "SELECT NOT(?) AS a, NOT(?) AS b" (t nil)
       (a b)
     (is-false a)
     (is-true b)))
+
+(test bind-boolean-keyword
+  (test-query (str:concat "SELECT ?::boolean || '' AS a "
+                          ", ?::boolean || '' AS b")
+      (:false :true)
+      (a b)
+    (is (string= "false" a))
+    (is (string= "true" b))))
 
 (test bind-integers
   (test-query

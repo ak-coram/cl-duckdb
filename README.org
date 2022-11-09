@@ -137,6 +137,57 @@ Please note that the API is experimental and subject to changes.
 - https://github.com/jwiegley/periods
 - https://github.com/dardoria/uuid
 
+*** NIL as boolean FALSE vs NIL as NULL
+
+#+begin_src lisp
+  (ddb:initialize-default-connection)
+  ;; => #<DUCKDB::CONNECTION {101CAC0A73}>
+
+  ;; The boolean TRUE and FALSE values are mapped to T and NIL
+  ;; respectively in Lisp, but SQL NULL is also mapped to NIL causing
+  ;; some ambiguity:
+
+  (ddb:query "SELECT TRUE AS x, FALSE AS y, NULL AS z" '())
+  ;; => (("x" . #(T)) ("y" . #(NIL)) ("z" . #(NIL)))
+
+  ;; When necessary it's possible to differentiate between FALSE and
+  ;; NULL by simply using the IS NULL logical operator:
+
+  (ddb:query "SELECT FALSE IS NOT NULL AS x, NULL IS NULL AS y" '())
+  ;; => (("x" . #(T)) ("y" . #(T)))
+
+  ;; When binding parameter values, NIL is bound as FALSE when DuckDB
+  ;; can determine that the parameter type is boolean and as NULL
+  ;; otherwise. This means that simple cases like the following work as
+  ;; expected:
+
+  (ddb:run "CREATE TABLE values (v BOOLEAN)") ; => NIL
+  (ddb:query "INSERT INTO values (v) VALUES (?)" '(nil)) ; => (("Count" . #(1)))
+  (ddb:query "SELECT v, v IS NOT NULL AS v_is_not_null FROM values" '())
+  ;; => (("v" . #(NIL)) ("v_is_not_null" . #(T)))
+
+  ;; In some cases DuckDB doesn't determine parameter types based on the
+  ;; query and NIL is bound as NULL even for boolean parameters:
+
+  (ddb:query "SELECT ?::boolean || '' IS NULL AS x" '(nil))
+  ;; => (("x" . #(T)))
+
+  ;; To differentiate between FALSE and NULL unambiguously when binding
+  ;; boolean parameters, the keywords :FALSE and :NULL can be used. In
+  ;; the query below the first parameter type is not determined by
+  ;; DuckDB, so NIL would be bound AS NULL as seen in the similar
+  ;; example directly above. The second parameter type is correctly
+  ;; identified as boolean, so NIL would be bound as FALSE in this case.
+
+  (ddb:query "SELECT ?::boolean || '' IS NOT NULL AS x, ?::boolean IS NULL AS y"
+             '(:false :null)) ; => (("x" . #(T)) ("y" . #(T)))
+
+  ;; For completeness the :TRUE keyword is also supported. When used as
+  ;; a parameter value, it is equivalent to using T:
+
+  (ddb:query "SELECT ? = ? AS x" '(:true t)) ; => (("x" . #(T)))
+#+end_src
+
 ** Roadmap
 
 - [X] Support for querying built-in general-purpose types
