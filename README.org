@@ -161,10 +161,10 @@ Please note that the API is experimental and subject to changes.
   ;; otherwise. This means that simple cases like the following work as
   ;; expected:
 
-  (ddb:run "CREATE TABLE values (v BOOLEAN)") ; => NIL
-  (ddb:query "INSERT INTO values (v) VALUES (?)" '(nil)) ; => (("Count" . #(1)))
-  (ddb:query "SELECT v, v IS NOT NULL AS v_is_not_null FROM values" '())
-  ;; => (("v" . #(NIL)) ("v_is_not_null" . #(T)))
+  (ddb:run "CREATE TABLE values (v BOOLEAN)"
+           '("INSERT INTO values (v) VALUES (?)" (nil))) ; => NIL
+  (ddb:query "SELECT v, v IS NOT NULL AS is_not_null FROM values" '())
+  ;; => (("v" . #(NIL)) ("is_not_null" . #(T)))
 
   ;; In some cases DuckDB doesn't determine parameter types based on the
   ;; query and NIL is bound as NULL even for boolean parameters:
