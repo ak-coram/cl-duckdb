@@ -117,4 +117,5 @@
            #:query
            #:run
            #:get-result
-           #:with-appender))
+           #:with-appender
+           #:append-row))

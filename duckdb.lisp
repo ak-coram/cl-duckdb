@@ -429,9 +429,28 @@ binding a bit more concise. It is not intended for any other use."
   ((connection :initarg :connection :accessor connection)
    (schema :initarg :schema)
    (table :initarg :table)
+   (types :initarg :types :accessor types)
    (handle :accessor handle :initarg :handle)))
 
-(defun create-appender (schema table &key (connection *connection*))
+(defun get-column-types (connection table)
+  "Try to automatically determine the column types for appending to a table"
+  (let* ((columns (map 'list #'identity
+                       (get-result (query (str:concat "DESCRIBE \"" table "\"")
+                                          nil :connection connection)
+                                   'column-name)))
+         (names (str:join ", " (mapcar (lambda (column)
+                                         (str:concat "\"" column "\""))
+                                       columns)))
+         (params (str:join ", " (mapcar (lambda (_)
+                                          (declare (ignore _))
+                                          "?")
+                                        columns)))
+         (query (str:concat "INSERT INTO \"" table "\" (" names ") "
+                            "VALUES (" params ")")))
+    (with-statement (statement query :connection connection)
+      (parameter-types statement))))
+
+(defun create-appender (table &key schema (connection *connection*) types)
   (with-foreign-object (p-appender 'duckdb-api:duckdb-appender)
     (let ((p-schema (if schema (foreign-string-alloc schema)
                         (null-pointer))))
@@ -447,6 +466,8 @@ binding a bit more concise. It is not intended for any other use."
                                   :connection connection
                                   :schema schema
                                   :table table
+                                  :types (or types (get-column-types connection
+                                                                     table))
                                   :handle appender)
                    (let ((error-message (duckdb-api:duckdb-appender-error appender)))
                      (duckdb-api:duckdb-appender-destroy p-appender)
@@ -462,9 +483,68 @@ binding a bit more concise. It is not intended for any other use."
           (handle appender))
     (duckdb-api:duckdb-appender-destroy p-appender)))
 
-(defmacro with-appender ((appender-var schema table &key connection) &body body)
-  `(let ((,appender-var (create-appender ,schema ,table
+(defmacro with-appender
+    ((appender-var table &key schema connection types)
+     &body body)
+  `(let ((,appender-var (create-appender ,table
                                          ,@(when connection
-                                             `(:connection ,connection)))))
+                                             `(:connection ,connection))
+                                         :schema ,schema
+                                         :types ,types)))
      (unwind-protect (progn ,@body)
        (destroy-appender ,appender-var))))
+
+(defmacro generate-append-value-dispatch ()
+  "Generates dispatch for appending values.
+This macro captures variables from the surrounding scope of append-row
+intentionally."
+  (let ((appender-types
+          '((:duckdb-boolean
+             (case value
+               (:false (duckdb-api:duckdb-append-null handle))
+               ;; :TRUE is treated as T in the clause below
+               (t (duckdb-api:duckdb-append-boolean handle value))))
+            (:duckdb-varchar (duckdb-api:duckdb-append-varchar handle value))
+            (:duckdb-blob
+             (let ((length (length value)))
+               (with-foreign-array (ptr value `(:array :uint8 ,length))
+                 (duckdb-api:duckdb-append-blob handle ptr length))))
+            (:duckdb-float (duckdb-api:duckdb-append-float handle value))
+            (:duckdb-double (duckdb-api:duckdb-append-double handle value))
+            ;; 8-bit integers
+            (:duckdb-tinyint (duckdb-api:duckdb-append-int8 handle value))
+            (:duckdb-utinyint (duckdb-api:duckdb-append-uint8 handle value))
+            ;; 16-bit integers
+            (:duckdb-smallint (duckdb-api:duckdb-append-int16 handle value))
+            (:duckdb-usmallint (duckdb-api:duckdb-append-uint16 handle value))
+            ;; 32-bit integers
+            (:duckdb-integer (duckdb-api:duckdb-append-int32 handle value))
+            (:duckdb-uinteger (duckdb-api:duckdb-append-uint32 handle value))
+            ;; 64-bit integers
+            (:duckdb-bigint (duckdb-api:duckdb-append-int64 handle value))
+            (:duckdb-ubigint (duckdb-api:duckdb-append-uint64 handle value))
+            ;; hugeint
+            (:duckdb-hugeint (duckdb-api:duckdb-append-hugeint handle value))
+            (:duckdb-date (duckdb-api:duckdb-append-date handle value))
+            (:duckdb-timestamp (duckdb-api:duckdb-append-timestamp handle value))
+            (:duckdb-time (duckdb-api:duckdb-append-time handle value))
+            (:duckdb-uuid (let ((s (uuid:print-bytes nil value)))
+                            (duckdb-api:duckdb-append-varchar handle s))))))
+    `(ecase duckdb-type
+       ,@(loop :for (type append-form) :in appender-types
+               :collect `(,type
+                          ;; Handle binding NULL with the exception
+                          ;; of NIL being bound as FALSE for
+                          ;; booleans:
+                          (if (or ,(unless (eql type :duckdb-boolean)
+                                     `(null value))
+                                  (eql value :null))
+                              (duckdb-api:duckdb-append-null handle)
+                              ,append-form))))))
+
+(defun append-row (appender values)
+  (loop :with handle := (handle appender)
+        :for duckdb-type :in (types appender)
+        :for value :in values
+        :do (generate-append-value-dispatch)
+        :finally (duckdb-api:duckdb-appender-end-row handle)))

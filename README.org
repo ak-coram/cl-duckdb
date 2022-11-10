@@ -106,6 +106,19 @@ Please note that the API is experimental and subject to changes.
        (format t "PE9 Solution: ~a~%" (ddb:get-result results 'solution 0))))
 #+end_src
 
+*** Appenders
+
+#+begin_src lisp
+  (ddb:initialize-default-connection) ; => #<DUCKDB::CONNECTION {100B1088F3}>
+
+  (ddb:run "CREATE TABLE roman_numerals (i INTEGER, value TEXT)") ; => NIL
+  (ddb:with-appender (appender "roman_numerals")
+    (loop :for i :from 1 :below 4999
+          :do (ddb:append-row appender (list i (format nil "~:@R" i))))) ; => NIL
+  (ddb:get-result (ddb:query "SELECT * FROM roman_numerals WHERE i = 1848" nil)
+                  'value 0) ; => "MDCCCXXXXVIII"
+#+end_src
+
 ** Type & Value conversions
 
 | DuckDB Type | Common Lisp Type             | Note                                          |
