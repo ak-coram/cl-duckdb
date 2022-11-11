@@ -429,6 +429,7 @@ binding a bit more concise. It is not intended for any other use."
   ((connection :initarg :connection :accessor connection)
    (schema :initarg :schema)
    (table :initarg :table)
+   (column-count :initarg :column-count :accessor column-count)
    (types :initarg :types :accessor types)
    (handle :accessor handle :initarg :handle)))
 
@@ -467,13 +468,15 @@ binding a bit more concise. It is not intended for any other use."
                                                                p-appender))
                     (appender (mem-ref p-appender 'duckdb-api:duckdb-appender)))
                (if (eq result :duckdb-success)
-                   (make-instance 'appender
-                                  :connection connection
-                                  :schema schema
-                                  :table table
-                                  :types (or types (get-column-types connection
-                                                                     table))
-                                  :handle appender)
+                   (let ((column-types (or types (get-column-types connection
+                                                                   table))))
+                     (make-instance 'appender
+                                    :connection connection
+                                    :schema schema
+                                    :table table
+                                    :column-count (length column-types)
+                                    :types column-types
+                                    :handle appender))
                    (let ((error-message (duckdb-api:duckdb-appender-error appender)))
                      (duckdb-api:duckdb-appender-destroy p-appender)
                      (error 'duckdb-error
@@ -548,8 +551,18 @@ intentionally."
                               ,append-form))))))
 
 (defun append-row (appender values)
-  (loop :with handle := (handle appender)
-        :for duckdb-type :in (types appender)
-        :for value :in values
-        :do (generate-append-value-dispatch)
-        :finally (duckdb-api:duckdb-appender-end-row handle)))
+  (let ((error-message "Failed appending ~d value~:p to table with ~d column~:p."))
+    (loop :with handle := (handle appender)
+          :for i :from 0
+          :for duckdb-type :in (types appender)
+          :for value :in values
+          :do (generate-append-value-dispatch)
+          :finally (if (eql (column-count appender) i)
+                       (duckdb-api:duckdb-appender-end-row handle)
+                       (error 'duckdb-error
+                              :database (database (connection appender))
+                              :appender appender
+                              :error-message
+                              (format nil error-message
+                                      i
+                                      (column-count appender)))))))
