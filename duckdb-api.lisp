@@ -326,15 +326,37 @@
 (defcfun duckdb-decimal-scale :uint8
   (type duckdb-logical-type))
 
+(defcfun duckdb-enum-internal-type duckdb-type
+  (type duckdb-logical-type))
+
+(defcfun duckdb-enum-dictionary-size :uint32
+  (type duckdb-logical-type))
+
+(defcfun duckdb-enum-dictionary-value (:pointer :char)
+  (type duckdb-logical-type)
+  (index idx))
+
+(defcfun duckdb-free :void
+  (ptr (:pointer :void)))
+
+(defun get-enum-alist (logical-type)
+  (let ((enum-size (duckdb-enum-dictionary-size logical-type)))
+    (loop :for index :below enum-size
+          :for ptr := (duckdb-enum-dictionary-value logical-type index)
+          :collect `(,index . ,(foreign-string-to-lisp ptr))
+          :do (duckdb-free ptr))))
+
 (defun get-vector-type (vector)
   (let* ((logical-type (duckdb-vector-get-column-type vector))
-         (type (duckdb-get-type-id logical-type))
-         (is-decimal (eql type :duckdb-decimal)))
-    (values type
-            (when is-decimal
-              (duckdb-decimal-internal-type logical-type))
-            (when is-decimal
-              (duckdb-decimal-scale logical-type)))))
+         (type (duckdb-get-type-id logical-type)))
+    (case type
+      (:duckdb-decimal (values type
+                               (duckdb-decimal-internal-type logical-type)
+                               (duckdb-decimal-scale logical-type)))
+      (:duckdb-enum (values type
+                            (duckdb-enum-internal-type logical-type)
+                            (get-enum-alist logical-type)))
+      (t type))))
 
 (defcfun duckdb-vector-get-data (:pointer :void)
   (vector duckdb-vector))

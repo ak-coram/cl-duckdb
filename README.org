@@ -243,6 +243,7 @@ Please note that the API is experimental and subject to changes.
   - [X] INTERVAL
   - [X] TIME
   - [X] UUID
+  - [X] ENUM
 - [-] Support for binding built-in general-purpose types
   - [X] NULL
   - [X] VARCHAR
@@ -266,8 +267,15 @@ Please note that the API is experimental and subject to changes.
   - [ ] INTERVAL
   - [X] TIME
   - [X] UUID
+  - [X] ENUM
 - [ ] Support for querying nested / composite types
+  - [ ] List
+  - [ ] Struct
+  - [ ] Map
 - [ ] Support for binding nested / composite types
+  - [ ] List
+  - [ ] Struct
+  - [ ] Map
 - [ ] ...
 
 ** Legal

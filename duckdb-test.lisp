@@ -151,6 +151,12 @@
                                    :nsec (* microsecond 1000))
      d)))
 
+(test query-enum
+  (ddb:with-transient-connection
+    (ddb:run "CREATE TYPE tuber AS ENUM ('carrot', 'potato', 'yam')")
+    (let ((result (ddb:query "SELECT 'potato'::tuber AS value" nil)))
+      (is (string= "potato" (ddb:get-result result 'value 0))))))
+
 (test bind-null
   (test-query "SELECT ? IS NULL AS a, ? AS b" (nil nil)
       (a b)
@@ -266,6 +272,12 @@
     (test-query "SELECT ?::time AS time" (d) (time)
       (local-time-duration:duration= time d))))
 
+(test bind-enum
+  (ddb:with-transient-connection
+    (ddb:run "CREATE TYPE tuber AS ENUM ('carrot', 'potato', 'yam')")
+    (let ((result (ddb:query "SELECT ?::tuber AS value" (list "yam"))))
+      (is (string= "yam" (ddb:get-result result 'value 0))))))
+
 (test append-boolean-keyword
   (ddb:with-transient-connection
     (ddb:run "CREATE TABLE booleans (x BOOLEAN, y BOOLEAN, z BOOLEAN)")
@@ -279,3 +291,12 @@
                               "(SELECT DISTINCT x, y, z FROM booleans) AS b"))
            (results (ddb:query query nil)))
       (is (eql 8 (ddb:get-result results 'count 0))))))
+
+(test append-enum
+  (ddb:with-transient-connection
+    (ddb:run "CREATE TYPE tuber AS ENUM ('carrot', 'potato', 'yam')"
+             "CREATE TABLE garden (plant tuber)")
+    (ddb:with-appender (appender "garden")
+      (loop :with tubers := '("carrot" "potato" "yam")
+            :for tuber :in tubers
+            :do (ddb:append-row appender (list tuber))))))

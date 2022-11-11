@@ -234,7 +234,7 @@ cleanup."
        (destroy-result ,result-var))))
 
 (defun translate-vector (chunk-size vector results)
-  (multiple-value-bind (vector-type internal-type decimal-scale)
+  (multiple-value-bind (vector-type internal-type aux)
       (duckdb-api:get-vector-type vector)
     (let* ((vector-ffi-type (duckdb-api:get-ffi-type (or internal-type vector-type)))
            (p-data (duckdb-api:duckdb-vector-get-data vector))
@@ -242,9 +242,12 @@ cleanup."
       (loop :for i :below chunk-size
             :for value := (when (duckdb-api:duckdb-validity-row-is-valid validity i)
                             (let ((v (mem-aref p-data vector-ffi-type i)))
-                              (if (eql vector-type :duckdb-decimal)
-                                  (* v (expt 10 (- decimal-scale)))
-                                  v)))
+                              (case vector-type
+                                (:duckdb-decimal (let ((decimal-scale aux))
+                                                   (* v (expt 10 (- decimal-scale)))))
+                                (:duckdb-enum (let ((enum-alist aux))
+                                                (alexandria:assoc-value enum-alist v)))
+                                (t v))))
             :do (vector-push-extend value
                                     results
                                     chunk-size)))))
@@ -308,7 +311,7 @@ binding a bit more concise. It is not intended for any other use."
                (:false (duckdb-api:duckdb-bind-boolean statement-handle i nil))
                ;; :TRUE is treated as T in the clause below
                (t (duckdb-api:duckdb-bind-boolean statement-handle i value))))
-            (:duckdb-varchar string
+            ((:duckdb-varchar :duckdb-enum) string
              (duckdb-api:duckdb-bind-varchar statement-handle i value))
             (:duckdb-blob (vector (unsigned-byte 8))
              (let ((length (length value)))
@@ -512,7 +515,8 @@ intentionally."
                (:false (duckdb-api:duckdb-append-bool handle nil))
                ;; :TRUE is treated as T in the clause below
                (t (duckdb-api:duckdb-append-bool handle value))))
-            (:duckdb-varchar (duckdb-api:duckdb-append-varchar handle value))
+            ((:duckdb-varchar :duckdb-enum)
+             (duckdb-api:duckdb-append-varchar handle value))
             (:duckdb-blob
              (let ((length (length value)))
                (with-foreign-array (ptr value `(:array :uint8 ,length))
