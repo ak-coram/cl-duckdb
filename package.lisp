@@ -117,5 +117,6 @@
            #:query
            #:run
            #:get-result
+           #:quote-identifier
            #:with-appender
            #:append-row))

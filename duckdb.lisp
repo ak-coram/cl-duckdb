@@ -432,23 +432,28 @@ binding a bit more concise. It is not intended for any other use."
    (types :initarg :types :accessor types)
    (handle :accessor handle :initarg :handle)))
 
+(defun quote-identifier (s)
+  (let* ((double-quote "\"")
+         (escaped-double-quote (str:concat double-quote double-quote)))
+    (str:concat double-quote
+                (str:replace-all double-quote escaped-double-quote s)
+                double-quote)))
+
 (defun get-column-types (connection table)
   "Try to automatically determine the column types for appending to a table"
-  (let* ((columns (map 'list #'identity
-                       (get-result (query (str:concat "DESCRIBE \"" table "\"")
-                                          nil :connection connection)
-                                   'column-name)))
-         (names (str:join ", " (mapcar (lambda (column)
-                                         (str:concat "\"" column "\""))
-                                       columns)))
-         (params (str:join ", " (mapcar (lambda (_)
-                                          (declare (ignore _))
-                                          "?")
-                                        columns)))
-         (query (str:concat "INSERT INTO \"" table "\" (" names ") "
-                            "VALUES (" params ")")))
-    (with-statement (statement query :connection connection)
-      (parameter-types statement))))
+  (labels ((wrap-parens (s) (str:concat " (" s ") ")))
+    (let* ((table-id (quote-identifier table))
+           (columns (map 'list #'identity
+                         (get-result (query (str:concat "DESCRIBE " table-id)
+                                            nil :connection connection)
+                                     'column-name)))
+           (column-ids (str:join ", " (mapcar #'quote-identifier columns)))
+           (params (str:join ", " (make-list (length columns)
+                                             :initial-element "?")))
+           (query (str:concat "INSERT INTO " table-id (wrap-parens column-ids)
+                              "VALUES " (wrap-parens params))))
+      (with-statement (statement query :connection connection)
+        (parameter-types statement)))))
 
 (defun create-appender (table &key schema (connection *connection*) types)
   (with-foreign-object (p-appender 'duckdb-api:duckdb-appender)
