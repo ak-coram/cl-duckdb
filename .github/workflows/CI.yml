@@ -49,18 +49,10 @@ jobs:
           aria2c "https://github.com/duckdb/duckdb/releases/download/v$env:DUCKDB_VERSION/libduckdb-windows-amd64.zip"
           7z x libduckdb-windows-amd64.zip
 
-      - name: Setup Lisp (Non-Windows)
+      - name: Setup Lisp
         continue-on-error: true
         uses: 40ants/setup-lisp@v2
-        if: runner.os != 'Windows'
-          
-      - name: Setup sbcl-bin/2.2.6 (Windows)
-        continue-on-error: true
-        uses: 40ants/setup-lisp@v2
-        if: runner.os == 'Windows'
-        env:
-          LISP: sbcl-bin/2.2.6
-          
+
       - name: Run tests (Non-Windows)
         if: runner.os != 'Windows'
         shell: bash
