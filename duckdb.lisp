@@ -636,6 +636,14 @@ intentionally."
                  (duckdb-api:duckdb-append-blob handle ptr length))))
             (:duckdb-float (duckdb-api:duckdb-append-float handle value))
             (:duckdb-double (duckdb-api:duckdb-append-double handle value))
+            (:duckdb-decimal
+             (etypecase value
+               (ratio (duckdb-api:duckdb-append-varchar
+                       handle (rational-to-string value 38)))
+               (single-float (duckdb-api:duckdb-append-float handle value))
+               (double-float (duckdb-api:duckdb-append-double handle value))
+               (integer (duckdb-api:duckdb-append-varchar
+                         handle (format nil "~d" value)))))
             ;; 8-bit integers
             (:duckdb-tinyint (duckdb-api:duckdb-append-int8 handle value))
             (:duckdb-utinyint (duckdb-api:duckdb-append-uint8 handle value))

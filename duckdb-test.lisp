@@ -368,6 +368,17 @@
   (test-append "float" '(3.14s0))
   (test-append "double" '(2.71d0)))
 
+(test append-decimal
+  (test-append "DECIMAL(38,38)"
+      (list (/ 33333333333333333333333333333333333333
+               100000000000000000000000000000000000000)))
+  (test-append "DECIMAL(7,6)" '(3141592/1000000))
+  (test-append "DECIMAL(10,5)" '(123))
+  (test-append "DECIMAL(10,5)" '(123.5s0)
+               :convert #'rationalize)
+  (test-append "DECIMAL(10,5)" '(123.5d0)
+               :convert #'rationalize))
+
 (test append-date
   (test-append "date" (list (local-time:today)) :test local-time:timestamp=))
 
