@@ -161,6 +161,7 @@ Please note that the API is experimental and subject to changes.
 | TIME        | local-time-duration:duration | Microsecond precision                         |
 | INTERVAL    | periods:duration             | Microsecond precision                         |
 | UUID        | uuid:uuid                    |                                               |
+| ENUM types  | string                       |                                               |
 
 - https://github.com/dlowe-net/local-time
 - https://github.com/enaeher/local-time-duration
