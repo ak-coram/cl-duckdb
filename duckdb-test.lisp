@@ -278,6 +278,31 @@
     (let ((result (ddb:query "SELECT ?::tuber AS value" (list "yam"))))
       (is (string= "yam" (ddb:get-result result 'value 0))))))
 
+(defmacro test-append (sql-type values &key convert test)
+  (alexandria:once-only (values convert)
+    (alexandria:with-gensyms (appender value results x y)
+      `(ddb:with-transient-connection
+         (ddb:run ,(str:concat "CREATE TABLE test (x " sql-type ")"))
+         (ddb:with-appender (,appender "test")
+           (loop :for ,value :in ,values
+                 :do (ddb:append-row ,appender (list ,value))))
+         (let* ((,results (ddb:query "SELECT x FROM test" nil)))
+           (loop :for ,x :across (ddb:get-result ,results 'x)
+                 :for ,y :in ,values
+                 :do (let ((,x (if ,convert (funcall ,convert ,x) ,x))
+                           (,y (if ,convert (funcall ,convert ,y) ,y)))
+                       (is (,(or test 'equal) ,x ,y)))))))))
+
+(test append-null
+  (test-append "varchar" '(nil)))
+
+(test append-null-keyword
+  (test-append "varchar" '(:null)
+    :convert (lambda (v) (if (eql v :null) nil v))))
+
+(test append-boolean
+  (test-append "boolean" '(nil t)))
+
 (test append-boolean-keyword
   (ddb:with-transient-connection
     (ddb:run "CREATE TABLE booleans (x BOOLEAN, y BOOLEAN, z BOOLEAN)")
@@ -291,6 +316,46 @@
                               "(SELECT DISTINCT x, y, z FROM booleans) AS b"))
            (results (ddb:query query nil)))
       (is (eql 8 (ddb:get-result results 'count 0))))))
+
+(test append-string
+  (test-append "varchar" '("Árvíztűrő tükörfúrógép")))
+
+(test append-integers
+  (test-append "tinyint" '(-128))
+  (test-append "utinyint" '(255))
+  (test-append "smallint" '(-32768))
+  (test-append "usmallint" '(65535))
+  (test-append "integer" '(-2147483648))
+  (test-append "uinteger" '(4294967295))
+  (test-append "bigint" '(-9223372036854775808))
+  (test-append "ubigint"  '(18446744073709551615))
+  (test-append "hugeint"
+      '(-170141183460469231731687303715884105727
+        170141183460469231731687303715884105727)))
+
+(test append-blob
+  (let ((s "Árvíztűrő tükörfúrógép"))
+    (test-append "blob" (list (babel:string-to-octets s))
+      :convert (lambda (v) (loop :for x :across v :collect x)))))
+
+(test append-floats
+  (test-append "float" '(3.14s0))
+  (test-append "double" '(2.71d0)))
+
+(test append-date
+  (test-append "date" (list (local-time:today)) :test local-time:timestamp=))
+
+(test append-timestamp
+  (test-append "timestamp" (list (local-time:now))
+    :test local-time:timestamp=))
+
+(test append-uuid
+  (test-append "uuid" (list (uuid:make-v4-uuid)) :test uuid:uuid=))
+
+(test append-time
+  (let ((d (local-time-duration:duration
+            :week 1 :day 1 :hour 1 :minute 1 :sec 1 :nsec 1000)))
+    (test-append "time" (list d) :test local-time-duration:duration=)))
 
 (test append-enum
   (ddb:with-transient-connection
