@@ -506,9 +506,9 @@ intentionally."
   (let ((appender-types
           '((:duckdb-boolean
              (case value
-               (:false (duckdb-api:duckdb-append-null handle))
+               (:false (duckdb-api:duckdb-append-bool handle nil))
                ;; :TRUE is treated as T in the clause below
-               (t (duckdb-api:duckdb-append-boolean handle value))))
+               (t (duckdb-api:duckdb-append-bool handle value))))
             (:duckdb-varchar (duckdb-api:duckdb-append-varchar handle value))
             (:duckdb-blob
              (let ((length (length value)))

@@ -491,7 +491,7 @@
 (defcfun duckdb-append-null duckdb-state
   (appender duckdb-appender))
 
-(defcfun duckdb-append-boolean duckdb-state
+(defcfun duckdb-append-bool duckdb-state
   (appender duckdb-appender)
   (val :bool))
 

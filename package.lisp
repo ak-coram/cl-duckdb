@@ -74,7 +74,7 @@
            #:duckdb-appender-begin-row
            #:duckdb-appender-end-row
            #:duckdb-append-null
-           #:duckdb-append-boolean
+           #:duckdb-append-bool
            #:duckdb-append-varchar
            #:duckdb-append-blob
            #:duckdb-append-float

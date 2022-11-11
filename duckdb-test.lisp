@@ -265,3 +265,18 @@
             :week 1 :day 1 :hour 1 :minute 1 :sec 1 :nsec 1000)))
     (test-query "SELECT ?::time AS time" (d) (time)
       (local-time-duration:duration= time d))))
+
+(test append-boolean-keyword
+  (ddb:with-open-database (db)
+    (ddb:with-default-connection (db)
+      (ddb:run "CREATE TABLE booleans (x BOOLEAN, y BOOLEAN, z BOOLEAN)")
+      (ddb:with-appender (appender "booleans")
+        (loop :with booleans := '(:true :false)
+              :for x :in booleans
+              :do (loop :for y :in booleans
+                        :do (loop :for z :in booleans
+                                  :do (ddb:append-row appender (list x y z))))))
+      (let* ((query (str:concat "SELECT COUNT(*) AS count FROM "
+                                "(SELECT DISTINCT x, y, z FROM booleans) AS b"))
+             (results (ddb:query query nil)))
+        (is (eql 8 (ddb:get-result results 'count 0)))))))
