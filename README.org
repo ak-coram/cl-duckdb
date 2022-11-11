@@ -78,6 +78,23 @@ distribution:
   (fiveam:run! :duckdb)
 #+end_src
 
+*** Running benchmarks
+
+- Load the benchmarks via Quicklisp:
+
+#+begin_src lisp
+  (ql:quickload :duckdb/benchmark)
+#+end_src
+
+- Use [[https://asdf.common-lisp.dev/][ASDF]] or run the benchmarks directly:
+
+#+begin_src lisp
+  ;; Using ASDF:
+  (asdf:test-system :duckdb/benchmark)
+  ;; Running directly:
+  (duckdb/benchmark:run-benchmarks)
+#+end_src
+
 ** Basic usage
 
 Please note that the API is experimental and subject to changes.

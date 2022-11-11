@@ -24,3 +24,11 @@
                #:fiveam)
   :components ((:file "duckdb-test"))
   :perform (test-op (o c) (symbol-call :fiveam '#:run! :duckdb)))
+
+(asdf:defsystem #:duckdb/benchmark
+  :depends-on (#:duckdb
+               #:trivial-benchmark)
+  :components ((:file "duckdb-benchmark"))
+  :perform (test-op
+            (o c)
+            (symbol-call :duckdb/benchmark '#:run-benchmarks)))

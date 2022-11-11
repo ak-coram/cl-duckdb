@@ -109,6 +109,7 @@
            #:with-open-connection
            #:with-statement
            #:with-execute
+           #:translate-result
            #:bind-parameters
            #:initialize-default-connection
            #:disconnect-default-connection

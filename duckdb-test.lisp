@@ -267,16 +267,15 @@
       (local-time-duration:duration= time d))))
 
 (test append-boolean-keyword
-  (ddb:with-open-database (db)
-    (ddb:with-default-connection (db)
-      (ddb:run "CREATE TABLE booleans (x BOOLEAN, y BOOLEAN, z BOOLEAN)")
-      (ddb:with-appender (appender "booleans")
-        (loop :with booleans := '(:true :false)
-              :for x :in booleans
-              :do (loop :for y :in booleans
-                        :do (loop :for z :in booleans
-                                  :do (ddb:append-row appender (list x y z))))))
-      (let* ((query (str:concat "SELECT COUNT(*) AS count FROM "
-                                "(SELECT DISTINCT x, y, z FROM booleans) AS b"))
-             (results (ddb:query query nil)))
-        (is (eql 8 (ddb:get-result results 'count 0)))))))
+  (ddb:with-transient-connection
+    (ddb:run "CREATE TABLE booleans (x BOOLEAN, y BOOLEAN, z BOOLEAN)")
+    (ddb:with-appender (appender "booleans")
+      (loop :with booleans := '(:true :false)
+            :for x :in booleans
+            :do (loop :for y :in booleans
+                      :do (loop :for z :in booleans
+                                :do (ddb:append-row appender (list x y z))))))
+    (let* ((query (str:concat "SELECT COUNT(*) AS count FROM "
+                              "(SELECT DISTINCT x, y, z FROM booleans) AS b"))
+           (results (ddb:query query nil)))
+      (is (eql 8 (ddb:get-result results 'count 0))))))
