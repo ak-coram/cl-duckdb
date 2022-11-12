@@ -26,6 +26,11 @@
 (defctype duckdb-vector (:pointer :void))
 (defctype duckdb-value (:pointer :void))
 
+(defctype duckdb-table-function (:pointer :void))
+(defctype duckdb-bind-info (:pointer :void))
+(defctype duckdb-init-info (:pointer :void))
+(defctype duckdb-function-info (:pointer :void))
+
 (defcenum duckdb-state
   (:duckdb-success 0)
   (:duckdb-error 1))
@@ -309,7 +314,11 @@
 (defcfun duckdb-data-chunk-get-size (idx)
   (chunk duckdb-data-chunk))
 
-(defcfun duckdb-vector-size (idx))
+(defcfun duckdb-data-chunk-set-size :void
+  (chunk duckdb-data-chunk)
+  (size idx))
+
+(defcfun duckdb-vector-size idx)
 
 (defcfun duckdb-vector-get-column-type (duckdb-logical-type)
   (vector duckdb-vector))
@@ -582,3 +591,154 @@
   (appender duckdb-appender)
   (val (:struct duckdb-time)))
 
+(defcfun duckdb-create-logical-type duckdb-logical-type
+  (type duckdb-type))
+
+(defcfun duckdb-destroy-logical-type duckdb-logical-type
+  (type (:pointer duckdb-type)))
+
+(defcfun duckdb-get-int64 :int64
+  (value duckdb-value))
+
+(defcfun duckdb-get-varchar :string
+  (value duckdb-value))
+
+(defcfun duckdb-destroy-value :void
+  (value (:pointer duckdb-value)))
+
+(defcfun duckdb-create-table-function duckdb-table-function)
+
+(defcfun duckdb-destroy-table-function :void
+  (table-function (:pointer duckdb-table-function)))
+
+(defcfun duckdb-table-function-set-name :void
+  (table-function duckdb-table-function)
+  (name :string))
+
+(defcfun duckdb-table-function-add-parameter :void
+  (table-function duckdb-table-function)
+  (type duckdb-logical-type))
+
+(defcfun duckdb-table-function-set-extra-info :void
+  (table-function duckdb-table-function)
+  (extra-info (:pointer :void))
+  (destroy :pointer))
+
+(defcfun duckdb-table-function-set-bind :void
+  (table-function duckdb-table-function)
+  (bind :pointer))
+
+(defcfun duckdb-table-function-set-init :void
+  (table-function duckdb-table-function)
+  (init :pointer))
+
+(defcfun duckdb-table-function-set-local-init :void
+  (table-function duckdb-table-function)
+  (init :pointer))
+
+(defcfun duckdb-table-function-set-function :void
+  (table-function duckdb-table-function)
+  (function :pointer))
+
+(defcfun duckdb-table-function-supports-projection-pushdown :void
+  (table-function duckdb-table-function)
+  (pushdown :bool))
+
+(defcfun duckdb-register-table-function duckdb-state
+  (connection duckdb-connection)
+  (function duckdb-table-function))
+
+(defcfun duckdb-table-function-get-extra-info (:pointer :void)
+  (info duckdb-bind-info))
+
+(defcfun duckdb-bind-add-result-column :void
+  (info duckdb-bind-info)
+  (name :string)
+  (type duckdb-logical-type))
+
+(defcfun duckdb-bind-get-parameter-count idx
+  (info duckdb-bind-info))
+
+(defcfun duckdb-bind-get-parameter duckdb-value
+  (info duckdb-bind-info)
+  (index idx))
+
+(defcfun duckdb-bind-set-bind-data :void
+  (info duckdb-bind-info)
+  (bind-data (:pointer :void))
+  (destroy :pointer))
+
+(defcfun duckdb-bind-set-cardinality :void
+  (info duckdb-bind-info)
+  (cardinality idx)
+  (is-exact :bool))
+
+(defcfun duckdb-bind-set-error :void
+  (info duckdb-bind-info)
+  (error :string))
+
+(defcfun duckdb-init-get-extra-info (:pointer :void)
+  (info duckdb-bind-info))
+
+(defcfun duckdb-init-get-bind-data (:pointer :void)
+  (info duckdb-bind-info))
+
+(defcfun duckdb-init-set-init-data (:pointer :void)
+  (info duckdb-bind-info)
+  (init-data (:pointer :void))
+  (destroy :pointer))
+
+(defcfun duckdb-init-get-column-count idx
+  (info duckdb-bind-info))
+
+(defcfun duckdb-init-get-column-index idx
+  (info duckdb-bind-info)
+  (column-index idx))
+
+(defcfun duckdb-init-set-max-threads :void
+  (info duckdb-bind-info)
+  (max-threads idx))
+
+(defcfun duckdb-init-set-error :void
+  (info duckdb-bind-info)
+  (error :string))
+
+(defcfun duckdb-function-get-extra-info (:pointer :void)
+  (info duckdb-bind-info))
+
+(defcfun duckdb-function-get-bind-data (:pointer :void)
+  (info duckdb-bind-info))
+
+(defcfun duckdb-function-get-init-data (:pointer :void)
+  (info duckdb-bind-info))
+
+(defcfun duckdb-function-get-local-init-data (:pointer :void)
+  (info duckdb-bind-info))
+
+(defcfun duckdb-function-set-error :void
+  (info duckdb-bind-info)
+  (error :string))
+
+(defmacro with-logical-type ((logical-type-var type) &body body)
+  `(let ((,logical-type-var (duckdb-create-logical-type ,type)))
+     (unwind-protect
+          (progn ,@body)
+       (with-foreign-object (p-type '(:pointer duckdb-logical-type))
+         (setf (mem-ref p-type 'duckdb-logical-type) ,logical-type-var)
+         (duckdb-destroy-logical-type p-type)))))
+
+(defmacro with-duckdb-value ((value-var alloc-form) &body body)
+  `(let ((,value-var ,alloc-form))
+     (unwind-protect
+          (progn ,@body)
+       (with-foreign-object (p-value '(:pointer duckdb-value))
+         (setf (mem-ref p-value 'duckdb-value) ,value-var)
+         (duckdb-destroy-value p-value)))))
+
+(defmacro with-table-function ((function-var) &body body)
+  `(let ((,function-var (duckdb-create-table-function)))
+     (unwind-protect
+          (progn ,@body)
+       (with-foreign-object (p-function '(:pointer duckdb-table-function))
+         (setf (mem-ref p-function 'duckdb-table-function) ,function-var)
+         (duckdb-destroy-table-function p-function)))))

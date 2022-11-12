@@ -54,7 +54,31 @@
                                           "JOIN integers AS i2 ON true")
           :for i fixnum :below 10
           :do (with-benchmark-sampling
-                (ddb:query test-query nil)))))
+                  (ddb:query test-query nil)))))
+
+(define-benchmark measure-integer-append-sum ()
+  (declare (optimize speed))
+  (dotimes (_ 100)
+    (ddb:with-transient-connection
+      (with-benchmark-sampling
+        (create-integers-table)
+        (ddb:with-appender (appender "integers")
+          (loop :for i fixnum :below *integer-operations*
+                :for params := (list i)
+                :do (ddb:append-row appender params)))
+        (ddb:query "SELECT sum(i) FROM integers" nil)))))
+
+(define-benchmark measure-static-table-integer-sum ()
+  (declare (optimize speed))
+  (let ((integers (make-array (list *integer-operations*)
+                              :element-type '(signed-byte 32))))
+    (loop :for i :of-type (signed-byte 32) :below *integer-operations*
+          :do (setf (aref integers i) i))
+    (dotimes (_ 100)
+      (ddb:with-transient-connection
+        (with-benchmark-sampling
+          (ddb:with-static-table ("integers" `(("i" . ,integers)))
+            (ddb:query "SELECT sum(i) FROM static_table('integers')" nil)))))))
 
 (defun floatify-results (benchmark-results)
   (loop :for v :being :each :hash-values :of benchmark-results

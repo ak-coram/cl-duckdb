@@ -67,10 +67,11 @@ The database is closed after BODY is evaluated."
     (let ((result (duckdb-api:duckdb-connect (handle database)
                                              p-connection)))
       (if (eq result :duckdb-success)
-          (setf (database instance) database
-
-                (handle instance)
-                (mem-ref p-connection 'duckdb-api:duckdb-connection))
+          (let ((handle (mem-ref p-connection
+                                 'duckdb-api:duckdb-connection)))
+            (duckdb-api:register-static-table-function handle)
+            (setf (database instance) database
+                  (handle instance) handle))
           (error 'duckdb-error :database database)))))
 
 (defun connect (database)
@@ -570,3 +571,16 @@ intentionally."
                               (format nil error-message
                                       i
                                       (column-count appender)))))))
+
+(defmacro with-static-table ((table-name columns) &body body)
+  `(let ((duckdb-api:*static-tablespace* (cons (cons ,table-name ,columns)
+                                               duckdb-api:*static-tablespace*)))
+     (progn ,@body)))
+
+(defmacro with-static-tables (((table-name columns) &rest more-clauses)
+                              &body body)
+  `(with-static-table (,table-name ,columns)
+     ,@(if more-clauses
+           `((with-static-tables ,more-clauses
+               ,@body))
+           body)))

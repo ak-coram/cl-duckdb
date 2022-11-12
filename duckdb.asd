@@ -16,6 +16,7 @@
                #:uiop)
   :components ((:file "package")
                (:file "duckdb-api")
+               (:file "duckdb-static-table")
                (:file "duckdb"))
   :in-order-to ((test-op (test-op "duckdb/test"))))
 

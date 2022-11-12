@@ -90,7 +90,9 @@
            #:duckdb-append-hugeint
            #:duckdb-append-date
            #:duckdb-append-timestamp
-           #:duckdb-append-time))
+           #:duckdb-append-time
+           #:*static-tablespace*
+           #:register-static-table-function))
 
 (defpackage #:duckdb
   (:nicknames #:ddb)
@@ -120,4 +122,6 @@
            #:get-result
            #:quote-identifier
            #:with-appender
-           #:append-row))
+           #:append-row
+           #:with-static-table
+           #:with-static-tables))

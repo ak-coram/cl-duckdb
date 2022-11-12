@@ -136,6 +136,38 @@ Please note that the API is experimental and subject to changes.
                   'value 0) ; => "MDCCCXXXXVIII"
 #+end_src
 
+*** Querying Lisp vectors as table columns
+
+Currently only the following element types are supported (the values
+are currently copied into DuckDB data chunks internally). The vectors
+should also have the same length.
+
+| Common Lisp type   | DuckDB Type |
+|--------------------+-------------|
+| (unsigned-byte 8)  | UTINYINT    |
+| (unsigned-byte 16) | USMALLINT   |
+| (unsigned-byte 32) | UINTEGER    |
+| (unsigned-byte 64) | UBIGINT     |
+| (signed-byte 8)    | TINYINT     |
+| (signed-byte 16)   | SMALLINT    |
+| (signed-byte 32)   | INTEGER     |
+| (signed-byte 64)   | BIGINT      |
+| single-float       | REAL        |
+| double-float       | DOUBLE      |
+
+#+begin_src lisp
+  (ddb:initialize-default-connection) ; => #<DUCKDB::CONNECTION {10074E8BE3}>
+
+  (let ((indexes (make-array '(10) :element-type '(unsigned-byte 8)
+                                   :initial-contents '(1 2 3 4 5 6 7 8 9 10)))
+        (primes (make-array '(10) :element-type '(unsigned-byte 8)
+                                  :initial-contents '(2 3 5 7 11 13 17 19 23 29))))
+    (ddb:with-static-table ("primes" `(("i" . ,indexes)
+                                       ("p" . ,primes)))
+      (ddb:query "SELECT * FROM static_table('primes')" nil)))
+  ;; => (("i" . #(1 2 3 4 5 6 7 8 9 10)) ("p" . #(2 3 5 7 11 13 17 19 23 29)))
+#+end_src
+
 ** Type & Value conversions
 
 | DuckDB Type | Common Lisp Type             | Note                                          |
