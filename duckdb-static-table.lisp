@@ -5,18 +5,22 @@
 (defun get-table (name)
   (alexandria:assoc-value *static-tablespace* name :test #'string=))
 
-(defun get-vector-duckdb-type (vector)
-  (etypecase vector
-    ((vector (unsigned-byte 8)) :duckdb-utinyint)
-    ((vector (signed-byte 8)) :duckdb-tinyint)
-    ((vector (unsigned-byte 16)) :duckdb-usmallint)
-    ((vector (signed-byte 16)) :duckdb-smallint)
-    ((vector (unsigned-byte 32)) :duckdb-uinteger)
-    ((vector (signed-byte 32)) :duckdb-integer)
-    ((vector (unsigned-byte 64)) :duckdb-ubigint)
-    ((vector (signed-byte 64)) :duckdb-bigint)
-    ((vector single-float) :duckdb-float)
-    ((vector double-float) :duckdb-double)))
+(eval-when (:compile-toplevel)
+  (defun static-table-column-types ()
+    '(((simple-array (unsigned-byte 8)) :duckdb-utinyint)
+      ((simple-array (signed-byte 8)) :duckdb-tinyint)
+      ((simple-array (unsigned-byte 16)) :duckdb-usmallint)
+      ((simple-array (signed-byte 16)) :duckdb-smallint)
+      ((simple-array (unsigned-byte 32)) :duckdb-uinteger)
+      ((simple-array (signed-byte 32)) :duckdb-integer)
+      ((simple-array (unsigned-byte 64)) :duckdb-ubigint)
+      ((simple-array (signed-byte 64)) :duckdb-bigint)
+      ((simple-array single-float) :duckdb-float)
+      ((simple-array double-float) :duckdb-double))))
+
+(defmacro static-vector-type (vector)
+  `(etypecase ,vector
+     ,@(static-table-column-types)))
 
 (defcstruct static-table-bind-data-struct
   (table-name :string))
@@ -29,7 +33,7 @@
     (with-duckdb-value (table-name-param (duckdb-bind-get-parameter info 0))
       (let* ((table-name (duckdb-get-varchar table-name-param)))
         (loop :for (column-name . values) :in (get-table table-name)
-              :for duckdb-type := (get-vector-duckdb-type values)
+              :for duckdb-type := (static-vector-type values)
               :do (with-logical-type (type duckdb-type)
                     (duckdb-bind-add-result-column info column-name type)))
         (setf (foreign-slot-value bind-data
@@ -49,6 +53,21 @@
           0)
     (duckdb-init-set-init-data info init-data (callback free-ptr))))
 
+(defmacro copy-static-vector ()
+  `(ecase duckdb-type
+     ,@(loop :for (cl-type duckdb-type) :in (static-table-column-types)
+             :collect
+             `(,duckdb-type
+               (let ((vector values))
+                 (declare (,cl-type vector))
+                 (loop :for i fixnum :below (duckdb-vector-size)
+                       :for k fixnum :from index
+                       :until (>= k data-length)
+                       :do (setf (mem-aref data-ptr
+                                           ,(get-ffi-type duckdb-type) i)
+                                 (aref vector k))
+                       :finally (return i)))))))
+
 (defcallback static-table-function :void ((info duckdb-bind-info)
                                           (output duckdb-data-chunk))
   (let* ((bind-data (duckdb-function-get-bind-data info))
@@ -56,19 +75,17 @@
          (table-name (foreign-slot-value bind-data
                                          '(:struct static-table-bind-data-struct)
                                          'table-name)))
+
     (with-foreign-slots ((index) init-data (:struct static-table-init-data-struct))
-      (let ((n (loop :for (column-name . values) :in (get-table table-name)
+      (let ((n (loop :for column :in (get-table table-name)
+                     :for values :of-type vector := (cdr column)
                      :for column-index :from 0
-                     :for ffi-type := (get-ffi-type (get-vector-duckdb-type values))
+                     :for duckdb-type := (static-vector-type values)
+                     :for ffi-type := (get-ffi-type duckdb-type)
                      :for vector := (duckdb-data-chunk-get-vector output column-index)
                      :for data-length := (length values)
                      :for data-ptr := (duckdb-vector-get-data vector)
-                     :maximize (loop :for i :below (duckdb-vector-size)
-                                     :for k :from index
-                                     :until (>= k data-length)
-                                     :do (setf (mem-aref data-ptr ffi-type i)
-                                               (aref values k))
-                                     :finally (return i)))))
+                     :maximize (copy-static-vector))))
         (setf index (+ n index))
         (duckdb-data-chunk-set-size output n)))))
 
