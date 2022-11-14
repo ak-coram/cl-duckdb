@@ -1,9 +1,24 @@
+;;;; duckdb-static-table.lisp
+
 (in-package :duckdb-api)
 
-(defparameter *static-tablespace* nil)
+(defparameter *static-table-bindings* nil)
+(defparameter *static-tablespace* (make-hash-table :test 'equal))
 
-(defun get-table (name)
-  (alexandria:assoc-value *static-tablespace* name :test #'string=))
+(defun add-table-reference (columns)
+  (let ((table-id (format nil "~a" (uuid:make-v4-uuid))))
+    (setf (gethash table-id *static-tablespace*)
+          columns)
+    table-id))
+
+(defun clear-table-reference (table-id)
+  (remhash table-id *static-tablespace*))
+
+(defun get-table-columns (table-id)
+  (gethash table-id *static-tablespace*))
+
+(defun get-table-id (name)
+  (alexandria:assoc-value *static-table-bindings* name :test #'string=))
 
 (eval-when (:compile-toplevel)
   (defun static-table-column-types ()
@@ -23,7 +38,8 @@
      ,@(static-table-column-types)))
 
 (defcstruct static-table-bind-data-struct
-  (table-name :string))
+  (table-name :string)
+  (table-uuid :string))
 
 (defcallback free-ptr :void ((ptr :pointer))
   (foreign-free ptr))
@@ -32,18 +48,23 @@
   (handler-case
       (let* ((bind-data (foreign-alloc '(:struct static-table-bind-data-struct))))
         (with-duckdb-value (table-name-param (duckdb-bind-get-parameter info 0))
-          (let* ((table-name (duckdb-get-varchar table-name-param))
-                 (table (get-table table-name)))
-            (unless table
-              (error (format nil "table ~s is undefined" table-name)))
-            (loop :for (column-name . values) :in table
+          (let* ((name (duckdb-get-varchar table-name-param))
+                 ;; Bind should run on the calling thread, so we
+                 ;; should be able to retrieve the UUID for the table
+                 ;; from the dynamic binding. This id is then used in
+                 ;; init & the function stages to load table data from
+                 ;; a global hash-table.
+                 (table-id (get-table-id name)))
+            (unless table-id
+              (error (format nil "table ~s is undefined" name)))
+            (loop :for (column-name . values) :in (get-table-columns table-id)
                   :for duckdb-type := (static-vector-type values)
                   :do (with-logical-type (type duckdb-type)
                         (duckdb-bind-add-result-column info column-name type)))
-            (setf (foreign-slot-value bind-data
-                                      '(:struct static-table-bind-data-struct)
-                                      'table-name)
-                  table-name)))
+            (with-foreign-slots ((table-name table-uuid) bind-data
+                                 (:struct static-table-bind-data-struct))
+              (setf table-name name
+                    table-uuid table-id))))
         (duckdb-bind-set-bind-data info bind-data (callback free-ptr)))
     (error (c)
       (duckdb-bind-set-error info
@@ -84,11 +105,11 @@
   (handler-case
       (let* ((bind-data (duckdb-function-get-bind-data info))
              (init-data (duckdb-function-get-init-data info))
-             (table-name (foreign-slot-value bind-data
-                                             '(:struct static-table-bind-data-struct)
-                                             'table-name)))
+             (table-id (foreign-slot-value bind-data
+                                           '(:struct static-table-bind-data-struct)
+                                           'table-uuid)))
         (with-foreign-slots ((index) init-data (:struct static-table-init-data-struct))
-          (let ((n (loop :for column :in (get-table table-name)
+          (let ((n (loop :for column :in (get-table-columns table-id)
                          :for values :of-type vector := (cdr column)
                          :for column-index :from 0
                          :for duckdb-type := (static-vector-type values)

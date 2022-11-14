@@ -91,7 +91,9 @@
            #:duckdb-append-date
            #:duckdb-append-timestamp
            #:duckdb-append-time
-           #:*static-tablespace*
+           #:*static-table-bindings*
+           #:add-table-reference
+           #:clear-table-reference
            #:register-static-table-function))
 
 (defpackage #:duckdb
@@ -124,4 +126,6 @@
            #:with-appender
            #:append-row
            #:with-static-table
-           #:with-static-tables))
+           #:with-static-tables
+           #:create-static-table
+           #:destroy-static-table))

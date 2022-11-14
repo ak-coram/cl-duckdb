@@ -573,9 +573,14 @@ intentionally."
                                       (column-count appender)))))))
 
 (defmacro with-static-table ((table-name columns) &body body)
-  `(let ((duckdb-api:*static-tablespace* (cons (cons ,table-name ,columns)
-                                               duckdb-api:*static-tablespace*)))
-     (progn ,@body)))
+  (alexandria:with-gensyms (table-id)
+    `(let ((,table-id (duckdb-api:add-table-reference ,columns)))
+       (unwind-protect
+            (let ((duckdb-api:*static-table-bindings*
+                    (cons (cons ,table-name ,table-id)
+                          duckdb-api:*static-table-bindings*)))
+              (progn ,@body))
+         (duckdb-api:clear-table-reference ,table-id)))))
 
 (defmacro with-static-tables (((table-name columns) &rest more-clauses)
                               &body body)
@@ -584,3 +589,16 @@ intentionally."
            `((with-static-tables ,more-clauses
                ,@body))
            body)))
+
+(defun create-static-table (table-name columns)
+  (let ((table-id (duckdb-api:add-table-reference columns)))
+    (push (cons table-name table-id)
+          duckdb-api:*static-table-bindings*)
+    table-id))
+
+(defun destroy-static-table (table-id)
+  (duckdb-api:clear-table-reference table-id)
+  (setf duckdb-api:*static-table-bindings*
+        (delete-if (lambda (entry)
+                     (string= (cdr entry) table-id))
+                   duckdb-api:*static-table-bindings*)))
