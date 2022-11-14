@@ -17,7 +17,7 @@ jobs:
       matrix:
         lisp: [sbcl-bin, ccl-bin/1.12.1, ecl/21.2.1]
         os: [ubuntu-latest, windows-latest, macos-latest]
-        duckdb: [0.5.1]
+        duckdb: [0.6.0, 0.5.1]
         exclude:
           - os: windows-latest
             lisp: ccl-bin/1.12.1
@@ -28,9 +28,10 @@ jobs:
       DUCKDB_VERSION: ${{ matrix.duckdb }}
     steps:
       - uses: actions/checkout@v2
-          
+
       - name: Install DuckDB (Linux)
         if: runner.os == 'Linux'
+        continue-on-error: true
         shell: bash
         run: |
           aria2c "https://github.com/duckdb/duckdb/releases/download/v${DUCKDB_VERSION}/libduckdb-linux-amd64.zip"
@@ -38,6 +39,7 @@ jobs:
 
       - name: Install DuckDB (macOS)
         if: runner.os == 'macOS'
+        continue-on-error: true
         shell: bash
         run: |
           aria2c "https://github.com/duckdb/duckdb/releases/download/v${DUCKDB_VERSION}/libduckdb-osx-universal.zip"
@@ -45,6 +47,7 @@ jobs:
 
       - name: Install DuckDB (Windows)
         if: runner.os == 'Windows'
+        continue-on-error: true
         run: |
           aria2c "https://github.com/duckdb/duckdb/releases/download/v$env:DUCKDB_VERSION/libduckdb-windows-amd64.zip"
           7z x libduckdb-windows-amd64.zip
