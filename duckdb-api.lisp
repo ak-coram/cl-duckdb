@@ -373,6 +373,9 @@
 (defcfun duckdb-vector-get-validity p-validity
   (vector duckdb-vector))
 
+(defcfun duckdb-vector-ensure-validity-writable :void
+  (vector duckdb-vector))
+
 (defcfun duckdb-vector-get-size idx
   (vector duckdb-vector))
 

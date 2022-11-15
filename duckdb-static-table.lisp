@@ -5,6 +5,13 @@
 (defparameter *static-table-bindings* nil)
 (defparameter *static-tablespace* (make-hash-table :test 'equal))
 
+(defclass static-column ()
+  ((name :initarg :name :accessor static-column-name)
+   (values :initarg :values :accessor static-column-values)
+   (value-count :initarg :value-count :accessor static-column-value-count)
+   (length :initarg :length :accessor static-column-length)
+   (type :initarg :type :accessor static-column-type)))
+
 (defun add-table-reference (columns)
   (let ((table-id (format nil "~a" (uuid:make-v4-uuid))))
     (setf (gethash table-id *static-tablespace*)
@@ -37,6 +44,25 @@
   `(etypecase ,vector
      ,@(static-table-column-types)))
 
+(defun make-static-column (name values &key column-type length)
+  (let* ((value-count (length values))
+         (column-length (or length
+                            value-count)))
+    (make-instance 'static-column
+                   :name name
+                   :type (or column-type (static-vector-type values))
+                   :values values
+                   :value-count value-count
+                   :length column-length)))
+
+(defun make-static-columns (columns)
+  (loop :for (column-name . column) :in columns
+        :collect
+        (cond
+          ((vectorp column) (make-static-column column-name column))
+          ((listp column) (apply #'make-static-column (cons column-name
+                                                            column))))))
+
 (defcstruct static-table-bind-data-struct
   (table-name :string)
   (table-uuid :string))
@@ -57,8 +83,9 @@
                  (table-id (get-table-id name)))
             (unless table-id
               (error (format nil "table ~s is undefined" name)))
-            (loop :for (column-name . values) :in (get-table-columns table-id)
-                  :for duckdb-type := (static-vector-type values)
+            (loop :for column :in (get-table-columns table-id)
+                  :for column-name := (static-column-name column)
+                  :for duckdb-type := (static-column-type column)
                   :do (with-logical-type (type duckdb-type)
                         (duckdb-bind-add-result-column info column-name type)))
             (with-foreign-slots ((table-name table-uuid) bind-data
@@ -92,7 +119,7 @@
              `(,duckdb-type
                (let ((vector values))
                  (declare (,cl-type vector))
-                 (loop :for i fixnum :below (duckdb-vector-size)
+                 (loop :for i fixnum :below vector-size
                        :for k fixnum :from index
                        :until (>= k data-length)
                        :do (setf (mem-aref data-ptr
@@ -100,24 +127,63 @@
                                  (aref vector k))
                        :finally (return i)))))))
 
+(defmacro copy-static-list ()
+  `(ecase duckdb-type
+     ,@(loop
+         :for (_ duckdb-type) :in (static-table-column-types)
+         :collect
+         `(,duckdb-type
+           (loop :with validity-ptr
+                   := (progn
+                        (duckdb-vector-ensure-validity-writable vector)
+                        (duckdb-vector-get-validity vector))
+                 :for i fixnum :below vector-size
+                 :for v :in (nthcdr index values)
+                 :for is-null := (or (null v)
+                                     (eql v :null))
+                 :for validity-bit-index := (mod i 64)
+                 :for validity-value :of-type (unsigned-byte 64)
+                   := (if (zerop validity-bit-index)
+                          #xffffffffffffffff
+                          validity-value)
+                 :if is-null
+                   ;; set as invalid
+                   :do (setf (ldb (byte 1 validity-bit-index)
+                                  validity-value)
+                             0)
+                 :else :do (setf (mem-aref data-ptr
+                                           ,(get-ffi-type duckdb-type) i)
+                                 v)
+                 :when (eql validity-bit-index 63)
+                   :do (setf (mem-aref validity-ptr :uint64 (floor i 64))
+                             validity-value)
+                 :finally
+                    (progn
+                      (setf (mem-aref validity-ptr :uint64 (floor i 64))
+                            validity-value)
+                      (return i)))))))
+
 (defcallback static-table-function :void ((info duckdb-bind-info)
                                           (output duckdb-data-chunk))
   (handler-case
-      (let* ((bind-data (duckdb-function-get-bind-data info))
+      (let* ((vector-size (duckdb-vector-size))
+             (bind-data (duckdb-function-get-bind-data info))
              (init-data (duckdb-function-get-init-data info))
              (table-id (foreign-slot-value bind-data
                                            '(:struct static-table-bind-data-struct)
                                            'table-uuid)))
         (with-foreign-slots ((index) init-data (:struct static-table-init-data-struct))
           (let ((n (loop :for column :in (get-table-columns table-id)
-                         :for values :of-type vector := (cdr column)
+                         :for values := (static-column-values column)
                          :for column-index :from 0
-                         :for duckdb-type := (static-vector-type values)
+                         :for duckdb-type := (static-column-type column)
                          :for ffi-type := (get-ffi-type duckdb-type)
                          :for vector := (duckdb-data-chunk-get-vector output column-index)
-                         :for data-length := (length values)
+                         :for data-length := (static-column-value-count column)
                          :for data-ptr := (duckdb-vector-get-data vector)
-                         :maximize (copy-static-vector))))
+                         :maximize (if (listp values)
+                                       (copy-static-list)
+                                       (copy-static-vector)))))
             (setf index (+ n index))
             (duckdb-data-chunk-set-size output n))))
     (error (c)

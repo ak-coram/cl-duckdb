@@ -574,7 +574,8 @@ intentionally."
 
 (defmacro with-static-table ((table-name columns) &body body)
   (alexandria:with-gensyms (table-id)
-    `(let ((,table-id (duckdb-api:add-table-reference ,columns)))
+    `(let ((,table-id (duckdb-api:add-table-reference
+                       (duckdb-api:make-static-columns ,columns))))
        (unwind-protect
             (let ((duckdb-api:*static-table-bindings*
                     (cons (cons ,table-name ,table-id)
@@ -591,7 +592,8 @@ intentionally."
            body)))
 
 (defun create-static-table (table-name columns)
-  (let ((table-id (duckdb-api:add-table-reference columns)))
+  (let ((table-id (duckdb-api:add-table-reference
+                   (duckdb-api:make-static-columns columns))))
     (push (cons table-name table-id)
           duckdb-api:*static-table-bindings*)
     table-id))

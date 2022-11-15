@@ -92,6 +92,7 @@
            #:duckdb-append-timestamp
            #:duckdb-append-time
            #:*static-table-bindings*
+           #:make-static-columns
            #:add-table-reference
            #:clear-table-reference
            #:register-static-table-function))

@@ -166,6 +166,15 @@ should also have the same length.
                                        ("p" . ,primes)))
       (ddb:query "SELECT * FROM static_table('primes')" nil)))
   ;; => (("i" . #(1 2 3 4 5 6 7 8 9 10)) ("p" . #(2 3 5 7 11 13 17 19 23 29)))
+
+  ;; Lists are also supported, but the column types have to be
+  ;; specified. NIL values are converted to NULL.
+  (ddb:with-static-table ("integers" `(("i" . (,(loop :for i :below 1000
+                                                      :if (evenp i) :collect i
+                                                        :else :collect nil)
+                                               :column-type :duckdb-integer))))
+    (ddb:query "SELECT sum(i) AS result FROM static_table('integers')" nil))
+  ;; => (("result" . #(249500)))
 #+end_src
 
 ** Type & Value conversions

@@ -68,7 +68,7 @@
                 :do (ddb:append-row appender params)))
         (ddb:query "SELECT sum(i) FROM integers" nil)))))
 
-(define-benchmark measure-static-table-integer-sum ()
+(define-benchmark measure-static-table-integer-vector-sum ()
   (declare (optimize speed))
   (let ((integers (make-array (list *integer-operations*)
                               :element-type '(signed-byte 32))))
@@ -78,6 +78,16 @@
       (ddb:with-transient-connection
         (with-benchmark-sampling
           (ddb:with-static-table ("integers" `(("i" . ,integers)))
+            (ddb:query "SELECT sum(i) FROM static_table('integers')" nil)))))))
+
+(define-benchmark measure-static-table-integer-list-sum ()
+  (declare (optimize speed))
+  (let ((integers (loop :for i fixnum :below *integer-operations* :collect i)))
+    (dotimes (_ 100)
+      (ddb:with-transient-connection
+        (with-benchmark-sampling
+          (ddb:with-static-table
+              ("integers" `(("i" . (,integers :column-type :duckdb-integer))))
             (ddb:query "SELECT sum(i) FROM static_table('integers')" nil)))))))
 
 (defun floatify-results (benchmark-results)
