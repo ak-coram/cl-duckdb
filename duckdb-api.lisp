@@ -376,6 +376,11 @@
 (defcfun duckdb-vector-ensure-validity-writable :void
   (vector duckdb-vector))
 
+(defcfun duckdb-vector-assign-string-element :void
+  (vector duckdb-vector)
+  (index idx)
+  (str :string))
+
 (defcfun duckdb-vector-get-size idx
   (vector duckdb-vector))
 

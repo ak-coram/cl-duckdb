@@ -130,7 +130,9 @@
 (defmacro copy-static-list ()
   `(ecase duckdb-type
      ,@(loop
-         :for (_ duckdb-type) :in (static-table-column-types)
+         :for (_ duckdb-type) :in (cons '(nil :duckdb-varchar)
+                                        (static-table-column-types))
+         :for is-string := (eql duckdb-type :duckdb-varchar)
          :collect
          `(,duckdb-type
            (loop :with validity-ptr
@@ -151,9 +153,13 @@
                    :do (setf (ldb (byte 1 validity-bit-index)
                                   validity-value)
                              0)
-                 :else :do (setf (mem-aref data-ptr
-                                           ,(get-ffi-type duckdb-type) i)
-                                 v)
+                 :else :do ,(if is-string
+                                `(duckdb-vector-assign-string-element vector
+                                                                      i
+                                                                      v)
+                                `(setf (mem-aref data-ptr
+                                                 ,(get-ffi-type duckdb-type) i)
+                                       v))
                  :when (eql validity-bit-index 63)
                    :do (setf (mem-aref validity-ptr :uint64 (floor i 64))
                              validity-value)

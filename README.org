@@ -177,6 +177,12 @@ should also have the same length.
                            ", COUNT(i) AS not_null_count "
                            "FROM static_table('integers')")
                nil)) ; => (("sum" . #(249500)) ("not_null_count" . #(500)))
+
+  ;; Lists also support string values:
+  (ddb:with-static-table ("lyrics" `(("in the year" . (,(list (format nil "~R" 2525))
+                                                       :column-type :duckdb-varchar))))
+    (ddb:query "SELECT * FROM static_table('lyrics')" nil))
+  ;; => (("in the year" . #("two thousand five hundred twenty-five")))
 #+end_src
 
 ** Type & Value conversions
