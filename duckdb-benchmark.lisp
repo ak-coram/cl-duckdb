@@ -56,6 +56,8 @@
           :do (with-benchmark-sampling
                   (ddb:query test-query nil)))))
 
+(defparameter *integer-sum-limit* 200000)
+
 (define-benchmark measure-integer-append-sum ()
   (declare (optimize speed))
   (dotimes (_ 100)
@@ -63,16 +65,16 @@
       (with-benchmark-sampling
         (create-integers-table)
         (ddb:with-appender (appender "integers")
-          (loop :for i fixnum :below *integer-operations*
+          (loop :for i fixnum :below *integer-sum-limit*
                 :for params := (list i)
                 :do (ddb:append-row appender params)))
         (ddb:query "SELECT sum(i) FROM integers" nil)))))
 
 (define-benchmark measure-static-table-integer-vector-sum ()
   (declare (optimize speed))
-  (let ((integers (make-array (list *integer-operations*)
-                              :element-type '(signed-byte 32))))
-    (loop :for i :of-type (signed-byte 32) :below *integer-operations*
+  (let* ((integers (make-array (list *integer-sum-limit*)
+                               :element-type '(signed-byte 32))))
+    (loop :for i :of-type (signed-byte 32) :below *integer-sum-limit*
           :do (setf (aref integers i) i))
     (dotimes (_ 100)
       (ddb:with-transient-connection
@@ -82,7 +84,7 @@
 
 (define-benchmark measure-static-table-integer-list-sum ()
   (declare (optimize speed))
-  (let ((integers (loop :for i fixnum :below *integer-operations* :collect i)))
+  (let ((integers (loop :for i fixnum :below *integer-sum-limit* :collect i)))
     (dotimes (_ 100)
       (ddb:with-transient-connection
         (with-benchmark-sampling
