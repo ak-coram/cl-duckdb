@@ -366,6 +366,7 @@
             :for tuber :in tubers
             :do (ddb:append-row appender (list tuber))))))
 
+#-ecl
 (test static-table-integers
   (labels ((get-table-name (type)
              (format nil "~a" type)))
@@ -402,6 +403,7 @@
         (dolist (table-id table-ids)
           (ddb:destroy-static-table table-id))))))
 
+#-ecl
 (test static-table-floats
   (let* ((floats nil)
          (doubles nil)

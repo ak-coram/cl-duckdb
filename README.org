@@ -136,11 +136,14 @@ Please note that the API is experimental and subject to changes.
                   'value 0) ; => "MDCCCXXXXVIII"
 #+end_src
 
-*** Querying Lisp vectors as table columns
+*** Querying Lisp vectors and lists as table columns
 
-Currently only the following element types are supported (the values
-are currently copied into DuckDB data chunks internally). The vectors
-should also have the same length.
+Currently only SBCL & CCL are supported with the following types (the
+values are currently copied into DuckDB data chunks internally). Using
+a combination of vectors and list for different columns is possible,
+but each column should have the same length.
+
+**** Vectors
 
 | Common Lisp type   | DuckDB Type |
 |--------------------+-------------|
@@ -155,9 +158,23 @@ should also have the same length.
 | single-float       | REAL        |
 | double-float       | DOUBLE      |
 
+**** Lists
+
+List columns need to specify the DuckDB column type and can contain
+the following values:
+
+- Integers in range of the corresponding column type (HUGEINT columns
+  are currently not supported)
+- Floating point numbers (single-float & double-float)
+- Strings
+- NIL values
+
+**** Examples
+
 #+begin_src lisp
   (ddb:initialize-default-connection) ; => #<DUCKDB::CONNECTION {10074E8BE3}>
 
+  ;; Use vectors as columns in a query:
   (let ((indexes (make-array '(10) :element-type '(unsigned-byte 8)
                                    :initial-contents '(1 2 3 4 5 6 7 8 9 10)))
         (primes (make-array '(10) :element-type '(unsigned-byte 8)
@@ -167,8 +184,8 @@ should also have the same length.
       (ddb:query "SELECT * FROM static_table('primes')" nil)))
   ;; => (("i" . #(1 2 3 4 5 6 7 8 9 10)) ("p" . #(2 3 5 7 11 13 17 19 23 29)))
 
-  ;; Lists are also supported, but the column types have to be
-  ;; specified. NIL values are converted to NULL.
+  ;; DuckDB column types always have to be specified for lists (NIL
+  ;; values are converted to NULL):
   (ddb:with-static-table ("integers" `(("i" . (,(loop :for i :below 1000
                                                       :if (evenp i) :collect i
                                                         :else :collect nil)
@@ -178,7 +195,6 @@ should also have the same length.
                            "FROM static_table('integers')")
                nil)) ; => (("sum" . #(249500)) ("not_null_count" . #(500)))
 
-  ;; Lists also support string values:
   (ddb:with-static-table ("lyrics" `(("in the year" . (,(list (format nil "~R" 2525))
                                                        :column-type :duckdb-varchar))))
     (ddb:query "SELECT * FROM static_table('lyrics')" nil))
