@@ -173,8 +173,10 @@ should also have the same length.
                                                       :if (evenp i) :collect i
                                                         :else :collect nil)
                                                :column-type :duckdb-integer))))
-    (ddb:query "SELECT sum(i) AS result FROM static_table('integers')" nil))
-  ;; => (("result" . #(249500)))
+    (ddb:query (str:concat "SELECT sum(i) AS sum "
+                           ", COUNT(i) AS not_null_count "
+                           "FROM static_table('integers')")
+               nil)) ; => (("sum" . #(249500)) ("not_null_count" . #(500)))
 #+end_src
 
 ** Type & Value conversions
