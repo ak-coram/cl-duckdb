@@ -365,3 +365,62 @@
       (loop :with tubers := '("carrot" "potato" "yam")
             :for tuber :in tubers
             :do (ddb:append-row appender (list tuber))))))
+
+(test static-table-integers
+  (labels ((get-table-name (type)
+             (format nil "~a" type)))
+    (ddb:with-transient-connection
+      (let* ((types '((:duckdb-utinyint 255)
+                      (:duckdb-tinyint 127)
+                      (:duckdb-usmallint)
+                      (:duckdb-smallint)
+                      (:duckdb-uinteger)
+                      (:duckdb-integer)
+                      (:duckdb-ubigint)
+                      (:duckdb-bigint)))
+             (table-ids
+               (loop :for (duckdb-type limit) :in types
+                     :for integer-list := (loop :for i :below (or limit
+                                                                  2000)
+                                                :collect i)
+                     :for table-name := (get-table-name duckdb-type)
+                     :for columns := `(("i" ,integer-list
+                                            :column-type ,duckdb-type))
+                     :collect (duckdb:create-static-table table-name columns)))
+             (queries
+               (loop :for (duckdb-type) :in types
+                     :for table-name := (get-table-name duckdb-type)
+                     :collect
+                     (format nil "SELECT sum(i)::integer AS sum FROM static_table('~a')"
+                             table-name))))
+        (loop :for (duckdb-type limit) :in types
+              :for query :in queries
+              :for sum := (loop :for i :below (or limit 2000)
+                                :sum i)
+              :do (is (eql sum
+                           (ddb:get-result (ddb:query query nil) 'sum 0))))
+        (dolist (table-id table-ids)
+          (ddb:destroy-static-table table-id))))))
+
+(test static-table-floats
+  (let* ((floats nil)
+         (doubles nil)
+         (sums (loop :for f := 0.5s0 :then (incf f)
+                     :for d := 0.5d0 :then (incf d)
+                     :until (> f 100)
+                     :do (push f floats)
+                     :do (push d  doubles)
+                     :sum f :into float-sum
+                     :sum d :into double-sum
+                     :finally (return (cons float-sum double-sum))))
+         (float-query "SELECT sum(f)::float AS sum FROM static_table('floats')")
+         (double-query "SELECT sum(d) AS sum FROM static_table('doubles')"))
+    (ddb:with-transient-connection
+      (ddb:with-static-tables
+          (("floats" `(("f" . (,floats :column-type :duckdb-float))))
+           ("doubles" `(("d" . (,doubles :column-type :duckdb-double)))))
+        (is (eql (car sums)
+                 (ddb:get-result (ddb:query float-query nil) 'sum 0)))
+        (is (eql (cdr sums)
+                 (ddb:get-result (ddb:query double-query nil) 'sum 0)))))))
+
