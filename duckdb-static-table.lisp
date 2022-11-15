@@ -205,3 +205,23 @@
       (duckdb-table-function-set-init function (callback static-table-init))
       (duckdb-table-function-set-function function (callback static-table-function))
       (duckdb-register-table-function connection function))))
+
+(defcallback static-table-replacement :void ((info duckdb-replacement-scan-info)
+                                             (table-name :string)
+                                             (data (:pointer :void)))
+  (declare (ignore data))
+  (handler-case
+      (let ((table-id (get-table-id table-name)))
+        (when table-id
+          (duckdb-replacement-scan-set-function-name info "static_table")
+          (with-duckdb-value (s (duckdb-create-varchar table-name))
+            (duckdb-replacement-scan-add-parameter info s))))
+    (error (c)
+      (duckdb-replacement-scan-set-error
+       info (format nil "static_table replacement - ~a" c)))))
+
+(defun add-static-table-replacement-scan (database)
+  (duckdb-add-replacement-scan database
+                               (callback static-table-replacement)
+                               (null-pointer)
+                               (null-pointer)))

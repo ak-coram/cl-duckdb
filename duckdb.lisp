@@ -28,10 +28,10 @@
                                                  (null-pointer)
                                                  p-error-message)))
         (if (eq result :duckdb-success)
-            (setf (handle instance)
-                  (mem-ref p-database 'duckdb-api:duckdb-database)
-
-                  (path instance) path)
+            (let ((handle (mem-ref p-database 'duckdb-api:duckdb-database)))
+              (duckdb-api:add-static-table-replacement-scan handle)
+              (setf (handle instance) handle
+                    (path instance) path))
             (error 'duckdb-error
                    :error-message (duckdb-api:get-message p-error-message)))))))
 
@@ -51,8 +51,7 @@ See CLOSE-DATABASE for cleanup."
   "Opens database for PATH, binds it to DATABASE-VAR.
 The database is closed after BODY is evaluated."
   `(let ((,database-var (open-database ,path)))
-     (unwind-protect
-          (progn ,@body)
+     (unwind-protect (progn ,@body)
        (close-database ,database-var))))
 
 ;;; Connections

@@ -31,6 +31,8 @@
 (defctype duckdb-init-info (:pointer :void))
 (defctype duckdb-function-info (:pointer :void))
 
+(defctype duckdb-replacement-scan-info (:pointer :void))
+
 (defcenum duckdb-state
   (:duckdb-success 0)
   (:duckdb-error 1))
@@ -611,6 +613,9 @@
 (defcfun duckdb-get-varchar :string
   (value duckdb-value))
 
+(defcfun duckdb-create-varchar duckdb-value
+  (value :string))
+
 (defcfun duckdb-destroy-value :void
   (value (:pointer duckdb-value)))
 
@@ -750,3 +755,21 @@
        (with-foreign-object (p-function '(:pointer duckdb-table-function))
          (setf (mem-ref p-function 'duckdb-table-function) ,function-var)
          (duckdb-destroy-table-function p-function)))))
+
+(defcfun duckdb-add-replacement-scan :void
+  (db duckdb-database)
+  (replacement :pointer)
+  (extra-data (:pointer :void))
+  (delete-callback :pointer))
+
+(defcfun duckdb-replacement-scan-set-function-name :void
+  (info duckdb-replacement-scan-info)
+  (function-name :string))
+
+(defcfun duckdb-replacement-scan-add-parameter :void
+  (info duckdb-replacement-scan-info)
+  (parameter duckdb-value))
+
+(defcfun duckdb-replacement-scan-set-error :void
+  (info duckdb-replacement-scan-info)
+  (error :string))

@@ -95,7 +95,8 @@
            #:make-static-columns
            #:add-table-reference
            #:clear-table-reference
-           #:register-static-table-function))
+           #:register-static-table-function
+           #:add-static-table-replacement-scan))
 
 (defpackage #:duckdb
   (:nicknames #:ddb)

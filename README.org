@@ -181,7 +181,7 @@ the following values:
                                   :initial-contents '(2 3 5 7 11 13 17 19 23 29))))
     (ddb:with-static-table ("primes" `(("i" . ,indexes)
                                        ("p" . ,primes)))
-      (ddb:query "SELECT * FROM static_table('primes')" nil)))
+      (ddb:query "SELECT * FROM primes" nil)))
   ;; => (("i" . #(1 2 3 4 5 6 7 8 9 10)) ("p" . #(2 3 5 7 11 13 17 19 23 29)))
 
   ;; DuckDB column types always have to be specified for lists (NIL
@@ -192,13 +192,26 @@ the following values:
                                                :column-type :duckdb-integer))))
     (ddb:query (str:concat "SELECT sum(i) AS sum "
                            ", COUNT(i) AS not_null_count "
-                           "FROM static_table('integers')")
+                           "FROM integers")
                nil)) ; => (("sum" . #(249500)) ("not_null_count" . #(500)))
 
   (ddb:with-static-table ("lyrics" `(("in the year" . (,(list (format nil "~R" 2525))
                                                        :column-type :duckdb-varchar))))
-    (ddb:query "SELECT * FROM static_table('lyrics')" nil))
+    (ddb:query "SELECT * FROM lyrics" nil))
   ;; => (("in the year" . #("two thousand five hundred twenty-five")))
+
+  ;; If another table with the same name exists, you can use the
+  ;; static_table table function directly:
+  (ddb:run (str:concat "CREATE TABLE polysemy (\"That you have but slumbered here, "
+                       "While these visions did appear\" VARCHAR)"))
+  (ddb:with-static-table
+      ("polysemy" `(("If we shadows have offended, Think but this, and all is mended:"
+                     . (() :column-type :duckdb-varchar))))
+    (ddb:query (str:concat "SELECT A.*, B.* FROM static_table('polysemy') AS A "
+                           "JOIN polysemy AS B ON true")
+               nil))
+  ;;  => (("If we shadows have offended, Think but this, and all is mended:" . #())
+  ;;      ("That you have but slumbered here, While these visions did appear" . #()))
 #+end_src
 
 ** Type & Value conversions

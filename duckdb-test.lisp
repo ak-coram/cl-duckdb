@@ -392,7 +392,7 @@
                (loop :for (duckdb-type) :in types
                      :for table-name := (get-table-name duckdb-type)
                      :collect
-                     (format nil "SELECT sum(i)::integer AS sum FROM static_table('~a')"
+                     (format nil "SELECT sum(i)::integer AS sum FROM \"~a\""
                              table-name))))
         (loop :for (duckdb-type limit) :in types
               :for query :in queries
@@ -415,8 +415,8 @@
                      :sum f :into float-sum
                      :sum d :into double-sum
                      :finally (return (cons float-sum double-sum))))
-         (float-query "SELECT sum(f)::float AS sum FROM static_table('floats')")
-         (double-query "SELECT sum(d) AS sum FROM static_table('doubles')"))
+         (float-query "SELECT sum(f)::float AS sum FROM floats")
+         (double-query "SELECT sum(d) AS sum FROM doubles"))
     (ddb:with-transient-connection
       (ddb:with-static-tables
           (("floats" `(("f" . (,floats :column-type :duckdb-float))))
