@@ -80,7 +80,7 @@
       (ddb:with-transient-connection
         (with-benchmark-sampling
           (ddb:with-static-table ("integers" `(("i" . ,integers)))
-            (ddb:query "SELECT sum(i) FROM static_table('integers')" nil)))))))
+            (ddb:query "SELECT sum(i) FROM integers" nil)))))))
 
 (define-benchmark measure-static-table-integer-list-sum ()
   (declare (optimize speed))
@@ -90,7 +90,7 @@
         (with-benchmark-sampling
           (ddb:with-static-table
               ("integers" `(("i" . (,integers :column-type :duckdb-integer))))
-            (ddb:query "SELECT sum(i) FROM static_table('integers')" nil)))))))
+            (ddb:query "SELECT sum(i) FROM integers" nil)))))))
 
 (defun floatify-results (benchmark-results)
   (loop :for v :being :each :hash-values :of benchmark-results
