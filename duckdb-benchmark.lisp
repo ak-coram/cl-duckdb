@@ -6,7 +6,7 @@
 
 (in-package #:duckdb/benchmark)
 
-(defparameter *integer-operations* 10000)
+(defparameter *integer-operations* 1000)
 
 (defun create-integers-table ()
   (ddb:run "CREATE TABLE integers (i INTEGER)"))
@@ -14,34 +14,37 @@
 (define-benchmark measure-integer-query ()
   (declare (optimize speed))
   (ddb:with-transient-connection
-    (ddb:with-statement (statement "SELECT ?::integer AS i")
-      (loop :for i fixnum :below *integer-operations*
-            :for params := (list i)
-            :do (with-benchmark-sampling
-                  (ddb:bind-parameters statement params)
-                  (ddb:with-execute (result statement)
-                    (ddb:translate-result result)))))))
+    (dotimes (_ 10)
+      (with-benchmark-sampling
+        (ddb:with-statement (statement "SELECT ?::integer AS i")
+          (loop :for i fixnum :below *integer-operations*
+                :for params := (list i)
+                :do (ddb:bind-parameters statement params)
+                :do (ddb:with-execute (result statement)
+                      (ddb:translate-result result))))))))
 
 (define-benchmark measure-integer-insert ()
   (declare (optimize speed))
-  (ddb:with-transient-connection
-    (create-integers-table)
-    (ddb:with-statement (statement "INSERT INTO integers (i) VALUES (?)")
-      (loop :for i fixnum :below *integer-operations*
-            :for params := (list i)
-            :do (with-benchmark-sampling
-                  (ddb:bind-parameters statement params)
-                  (ddb:perform statement))))))
+  (dotimes (_ 10)
+    (with-benchmark-sampling
+      (ddb:with-transient-connection
+        (create-integers-table)
+        (ddb:with-statement (statement "INSERT INTO integers (i) VALUES (?)")
+          (loop :for i fixnum :below *integer-operations*
+                :for params := (list i)
+                :do (ddb:bind-parameters statement params)
+                :do (ddb:perform statement)))))))
 
 (define-benchmark measure-integer-append ()
   (declare (optimize speed))
-  (ddb:with-transient-connection
-    (create-integers-table)
-    (ddb:with-appender (appender "integers")
-      (loop :for i fixnum :below *integer-operations*
-            :for params := (list i)
-            :do (with-benchmark-sampling
-                  (ddb:append-row appender params))))))
+  (dotimes (_ 10)
+    (with-benchmark-sampling
+      (ddb:with-transient-connection
+        (create-integers-table)
+        (ddb:with-appender (appender "integers")
+          (loop :for i fixnum :below *integer-operations*
+                :for params := (list i)
+                :do (ddb:append-row appender params)))))))
 
 (define-benchmark measure-large-integer-query ()
   (declare (optimize speed))
