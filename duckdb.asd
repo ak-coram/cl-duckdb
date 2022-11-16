@@ -33,3 +33,8 @@
   :perform (test-op
             (o c)
             (symbol-call :duckdb/benchmark '#:run-benchmarks)))
+
+(asdf:defsystem #:duckdb/*
+  :depends-on (#:duckdb
+               #:duckdb/test
+               #:duckdb/benchmark))
