@@ -355,8 +355,8 @@ the following values:
   - [ ] List
   - [ ] Struct
   - [ ] Map
-- [ ] Add support for [[https://duckdb.org/docs/api/c/table_functions][table functions]]
-- [ ] Add support for [[https://duckdb.org/docs/api/c/replacement_scans][replacement scans]]
+- [X] [[https://duckdb.org/docs/api/c/table_functions][Table functions]]
+- [X] [[https://duckdb.org/docs/api/c/replacement_scans][Replacement scans]]
 - [ ] ...
 
 ** Legal
