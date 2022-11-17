@@ -214,6 +214,11 @@ the following values:
                nil))
   ;;  => (("If we shadows have offended, Think but this, and all is mended:" . #())
   ;;      ("That you have but slumbered here, While these visions did appear" . #()))
+
+  (ddb:with-static-table ("bools" `(("v" . ((nil t :false :true :null)
+                                            :column-type :duckdb-boolean))))
+    (ddb:query "SELECT v, v IS NULL AS is_null FROM bools" nil))
+  ;; => (("v" . #(NIL T NIL T NIL)) ("is_null" . #(NIL NIL NIL NIL T)))
 #+end_src
 
 ** Type & Value conversions
