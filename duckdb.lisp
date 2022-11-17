@@ -248,9 +248,7 @@ cleanup."
                                 (:duckdb-enum (let ((enum-alist aux))
                                                 (alexandria:assoc-value enum-alist v)))
                                 (t v))))
-            :do (vector-push-extend value
-                                    results
-                                    chunk-size)))))
+            :do (vector-push-extend value results chunk-size)))))
 
 (defun translate-chunk (result-alist chunk)
   (let ((column-count (duckdb-api:duckdb-data-chunk-get-column-count chunk))
@@ -269,8 +267,8 @@ cleanup."
                  :collect (cons (duckdb-api:duckdb-column-name p-result column-index)
                                 (make-array '(0) :adjustable t :fill-pointer 0)))))
     (loop :for chunk-index :below chunk-count
-          :for chunk := (duckdb-api:result-get-chunk p-result chunk-index)
-          :do (translate-chunk result-alist chunk))
+          :do (duckdb-api:with-data-chunk (chunk p-result chunk-index)
+                (translate-chunk result-alist chunk)))
     result-alist))
 
 (defun assert-parameter-count (statement values)

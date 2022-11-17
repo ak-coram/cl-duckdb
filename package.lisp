@@ -63,7 +63,7 @@
            #:duckdb-bind-timestamp
            #:duckdb-bind-time
            #:result-chunk-count
-           #:result-get-chunk
+           #:with-data-chunk
            #:duckdb-validity-row-is-valid
            #:get-vector-type
            #:duckdb-appender-create
