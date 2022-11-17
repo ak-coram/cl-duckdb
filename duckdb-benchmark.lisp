@@ -95,6 +95,16 @@
               ("integers" `(("i" . (,integers :column-type :duckdb-integer))))
             (ddb:query "SELECT sum(i) FROM integers" nil)))))))
 
+(define-benchmark measure-static-table-boolean-count ()
+  (declare (optimize speed))
+  (let ((values (loop :for i :below 100000 :collect (evenp i))))
+    (dotimes (_ 100)
+      (ddb:with-transient-connection
+        (with-benchmark-sampling
+          (ddb:with-static-table
+              ("booleans" `(("v" . (,values :column-type :duckdb-boolean))))
+            (ddb:query "SELECT v, COUNT(*) FROM booleans GROUP BY v" nil)))))))
+
 (defun floatify-results (benchmark-results)
   (loop :for v :being :each :hash-values :of benchmark-results
           :using (hash-key k)
