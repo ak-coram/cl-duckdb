@@ -147,6 +147,7 @@ but each column should have the same length.
 
 | Common Lisp type   | DuckDB Type |
 |--------------------+-------------|
+| bit                | BOOLEAN     |
 | (unsigned-byte 8)  | UTINYINT    |
 | (unsigned-byte 16) | USMALLINT   |
 | (unsigned-byte 32) | UINTEGER    |
@@ -163,6 +164,7 @@ but each column should have the same length.
 List columns need to specify the DuckDB column type and can contain
 the following values:
 
+- Booleans (nil, t, :false, :true, :null)
 - Integers in range of the corresponding column type (HUGEINT columns
   are currently not supported)
 - Floating point numbers (single-float & double-float)

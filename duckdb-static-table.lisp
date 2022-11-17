@@ -29,7 +29,8 @@
 
 (eval-when (:compile-toplevel)
   (defun static-table-column-types ()
-    '(((simple-array (unsigned-byte 8)) :duckdb-utinyint)
+    '(((simple-array bit) :duckdb-boolean)
+      ((simple-array (unsigned-byte 8)) :duckdb-utinyint)
       ((simple-array (signed-byte 8)) :duckdb-tinyint)
       ((simple-array (unsigned-byte 16)) :duckdb-usmallint)
       ((simple-array (signed-byte 16)) :duckdb-smallint)
@@ -115,6 +116,7 @@
 (defmacro copy-static-vector ()
   `(ecase duckdb-type
      ,@(loop :for (cl-type duckdb-type) :in (static-table-column-types)
+             :for is-boolean := (eql duckdb-type :duckdb-boolean)
              :collect
              `(,duckdb-type
                (let ((vector values))
@@ -123,7 +125,10 @@
                        :for k fixnum :from index
                        :until (>= k data-length)
                        :do (setf (mem-aref data-ptr
-                                           ,(get-ffi-type duckdb-type) i)
+                                           ,(if is-boolean
+                                                :uint8
+                                                (get-ffi-type duckdb-type))
+                                           i)
                                  (aref vector k))
                        :finally (return i)))))))
 
@@ -133,6 +138,7 @@
          :for (_ duckdb-type) :in (cons '(nil :duckdb-varchar)
                                         (static-table-column-types))
          :for is-string := (eql duckdb-type :duckdb-varchar)
+         :for is-boolean := (eql duckdb-type :duckdb-boolean)
          :collect
          `(,duckdb-type
            (loop :with validity-ptr
@@ -141,7 +147,8 @@
                         (duckdb-vector-get-validity vector))
                  :for i fixnum :below vector-size
                  :for v :in (nthcdr index values)
-                 :for is-null := (or (null v)
+                 :for is-null := (or (and ,(not is-boolean)
+                                          (null v))
                                      (eql v :null))
                  :for validity-bit-index := (mod i 64)
                  :for validity-value :of-type (unsigned-byte 64)
@@ -153,13 +160,17 @@
                    :do (setf (ldb (byte 1 validity-bit-index)
                                   validity-value)
                              0)
-                 :else :do ,(if is-string
-                                `(duckdb-vector-assign-string-element vector
-                                                                      i
-                                                                      v)
-                                `(setf (mem-aref data-ptr
-                                                 ,(get-ffi-type duckdb-type) i)
-                                       v))
+                 :else :do ,(cond
+                              (is-string
+                               `(duckdb-vector-assign-string-element vector
+                                                                     i
+                                                                     v))
+                              (is-boolean
+                               `(setf (mem-aref data-ptr :uint8 i)
+                                      (if (and (not (eql v :false)) v) 1 0)))
+                              (t `(setf (mem-aref data-ptr
+                                                  ,(get-ffi-type duckdb-type) i)
+                                        v)))
                  :when (eql validity-bit-index 63)
                    :do (setf (mem-aref validity-ptr :uint64 (floor i 64))
                              validity-value)

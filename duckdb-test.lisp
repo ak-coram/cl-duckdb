@@ -367,6 +367,21 @@
             :do (ddb:append-row appender (list tuber))))))
 
 #-ecl
+(test static-table-booleans
+  (ddb:with-transient-connection
+    (ddb:with-static-table
+        ("booleans" `(("a" . ,(make-array '(6) :element-type 'bit
+                                               :initial-contents '(0 1 0 1 0 1)))
+                      ("b" . ((t nil :null :false t t)
+                              :column-type :duckdb-boolean))))
+      (let ((r1 (ddb:query "SELECT COUNT(*) AS count FROM booleans GROUP BY a" nil))
+            (r2 (ddb:query (str:concat "SELECT COUNT(*) AS count FROM booleans "
+                                       "GROUP BY b ORDER BY COUNT(b) ASC")
+                           nil)))
+        (is (equalp (ddb:get-result r1 'count) #(3 3)))
+        (is (equalp (ddb:get-result r2 'count) #(1 2 3)))))))
+
+#-ecl
 (test static-table-integers
   (labels ((get-table-name (type)
              (format nil "~a" type)))
@@ -425,4 +440,3 @@
                  (ddb:get-result (ddb:query float-query nil) 'sum 0)))
         (is (eql (cdr sums)
                  (ddb:get-result (ddb:query double-query nil) 'sum 0)))))))
-
