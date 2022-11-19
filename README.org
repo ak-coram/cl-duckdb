@@ -230,18 +230,17 @@ the following values:
    "alphabet"
    `(("c" . (("α" "β" "γ" "δ") :duckdb-varchar)))) ; => NIL
 
-  (ddb:with-transient-connection
-    (labels ((get-characters ()
-               (loop :with results := (ddb:query "SELECT c FROM alphabet" nil)
-                     :for c :across (ddb:get-result results 'c)
-                     :collect c)))
-      (ddb:with-static-table ("alphabet" `(("c" . (("Ⴀ" "Ⴁ" "Ⴂ" "Ⴃ")
+  (labels ((get-characters ()
+             (loop :with results := (ddb:query "SELECT c FROM alphabet" nil)
+                   :for c :across (ddb:get-result results 'c)
+                   :collect c)))
+    (ddb:with-static-table ("alphabet" `(("c" . (("Ⴀ" "Ⴁ" "Ⴂ" "Ⴃ")
+                                                 :duckdb-varchar))))
+      (ddb:with-static-table ("alphabet" `(("c" . (("𐌀" "𐌁" "𐌂" "𐌃" "𐌄")
                                                    :duckdb-varchar))))
-        (ddb:with-static-table ("alphabet" `(("c" . (("𐌀" "𐌁" "𐌂" "𐌃" "𐌄")
-                                                     :duckdb-varchar))))
-          (format t "Etruscan: ~{~a~^, ~}~%" (get-characters)))
-        (format t "Asomtavruli: ~{~a~^, ~}~%" (get-characters)))
-      (format t "Greek: ~{~a~^, ~}~%" (get-characters))))
+        (format t "Etruscan: ~{~a~^, ~}~%" (get-characters)))
+      (format t "Asomtavruli: ~{~a~^, ~}~%" (get-characters)))
+    (format t "Greek: ~{~a~^, ~}~%" (get-characters)))
   ;; Etruscan: 𐌀, 𐌁, 𐌂, 𐌃, 𐌄
   ;; Asomtavruli: Ⴀ, Ⴁ, Ⴂ, Ⴃ
   ;; Greek: α, β, γ, δ
