@@ -141,7 +141,9 @@ Please note that the API is experimental and subject to changes.
 Currently only SBCL & CCL are supported with the following types (the
 values are currently copied into DuckDB data chunks internally). Using
 a combination of vectors and list for different columns is possible,
-but each column should have the same length.
+but each column should have the same length. Tables using Lisp data
+structures are not bound to a single connection and work across
+different ones.
 
 **** Vectors
 
@@ -191,14 +193,14 @@ the following values:
   (ddb:with-static-table ("integers" `(("i" . (,(loop :for i :below 1000
                                                       :if (evenp i) :collect i
                                                         :else :collect nil)
-                                               :column-type :duckdb-integer))))
+                                               :duckdb-integer))))
     (ddb:query (str:concat "SELECT sum(i) AS sum "
                            ", COUNT(i) AS not_null_count "
                            "FROM integers")
                nil)) ; => (("sum" . #(249500)) ("not_null_count" . #(500)))
 
   (ddb:with-static-table ("lyrics" `(("in the year" . (,(list (format nil "~R" 2525))
-                                                       :column-type :duckdb-varchar))))
+                                                       :duckdb-varchar))))
     (ddb:query "SELECT * FROM lyrics" nil))
   ;; => (("in the year" . #("two thousand five hundred twenty-five")))
 
@@ -208,7 +210,7 @@ the following values:
                        "While these visions did appear\" VARCHAR)"))
   (ddb:with-static-table
       ("polysemy" `(("If we shadows have offended, Think but this, and all is mended:"
-                     . (() :column-type :duckdb-varchar))))
+                     . (() :duckdb-varchar))))
     (ddb:query (str:concat "SELECT A.*, B.* FROM static_table('polysemy') AS A "
                            "JOIN polysemy AS B ON true")
                nil))
@@ -216,9 +218,37 @@ the following values:
   ;;      ("That you have but slumbered here, While these visions did appear" . #()))
 
   (ddb:with-static-table ("bools" `(("v" . ((nil t :false :true :null)
-                                            :column-type :duckdb-boolean))))
+                                            :duckdb-boolean))))
     (ddb:query "SELECT v, v IS NULL AS is_null FROM bools" nil))
   ;; => (("v" . #(NIL T NIL T NIL)) ("is_null" . #(NIL NIL NIL NIL T)))
+
+  ;; Static tables can be managed in the global scope using the
+  ;; BIND-STATIC-TABLE, UNBIND-STATIC-TABLE and CLEAR-STATIC-TABLES
+  ;; functions. Temporarily overriding a table definition via
+  ;; WITH-STATIC-TABLE works as expected:
+  (ddb:bind-static-table
+   "alphabet"
+   `(("c" . (("α" "β" "γ" "δ") :duckdb-varchar)))) ; => NIL
+
+  (ddb:with-transient-connection
+    (labels ((get-characters ()
+               (loop :with results := (ddb:query "SELECT c FROM alphabet" nil)
+                     :for c :across (ddb:get-result results 'c)
+                     :collect c)))
+      (ddb:with-static-table ("alphabet" `(("c" . (("Ⴀ" "Ⴁ" "Ⴂ" "Ⴃ")
+                                                   :duckdb-varchar))))
+        (ddb:with-static-table ("alphabet" `(("c" . (("𐌀" "𐌁" "𐌂" "𐌃" "𐌄")
+                                                     :duckdb-varchar))))
+          (format t "Etruscan: ~{~a~^, ~}~%" (get-characters)))
+        (format t "Asomtavruli: ~{~a~^, ~}~%" (get-characters)))
+      (format t "Greek: ~{~a~^, ~}~%" (get-characters))))
+  ;; Etruscan: 𐌀, 𐌁, 𐌂, 𐌃, 𐌄
+  ;; Asomtavruli: Ⴀ, Ⴁ, Ⴂ, Ⴃ
+  ;; Greek: α, β, γ, δ
+  ;;  => NIL
+
+  (ddb:unbind-static-table "alphabet") ; => NIL
+  (ddb:clear-static-tables) ; => NIL
 #+end_src
 
 ** Type & Value conversions

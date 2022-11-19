@@ -93,8 +93,12 @@
            #:duckdb-append-time
            #:*static-table-bindings*
            #:make-static-columns
+           #:add-global-table-reference
+           #:clear-global-table-reference
+           #:clear-global-table-references
            #:add-table-reference
            #:clear-table-reference
+           #:clear-table-references
            #:register-static-table-function
            #:add-static-table-replacement-scan))
 
@@ -129,5 +133,6 @@
            #:append-row
            #:with-static-table
            #:with-static-tables
-           #:create-static-table
-           #:destroy-static-table))
+           #:bind-static-table
+           #:unbind-static-table
+           #:clear-static-tables))

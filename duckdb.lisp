@@ -588,16 +588,15 @@ intentionally."
                ,@body))
            body)))
 
-(defun create-static-table (table-name columns)
-  (let ((table-id (duckdb-api:add-table-reference
-                   (duckdb-api:make-static-columns columns))))
-    (push (cons table-name table-id)
-          duckdb-api:*static-table-bindings*)
-    table-id))
+(defun bind-static-table (table-name columns)
+  (duckdb-api:add-global-table-reference
+   table-name (duckdb-api:make-static-columns columns))
+  nil)
 
-(defun destroy-static-table (table-id)
-  (duckdb-api:clear-table-reference table-id)
-  (setf duckdb-api:*static-table-bindings*
-        (delete-if (lambda (entry)
-                     (string= (cdr entry) table-id))
-                   duckdb-api:*static-table-bindings*)))
+(defun unbind-static-table (table-name)
+  (duckdb-api:clear-global-table-reference table-name)
+  nil)
+
+(defun clear-static-tables ()
+  (duckdb-api:clear-global-table-references)
+  nil)

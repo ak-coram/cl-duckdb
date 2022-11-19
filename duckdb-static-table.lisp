@@ -2,6 +2,8 @@
 
 (in-package :duckdb-api)
 
+(defparameter *global-static-tablespace* (make-hash-table :test 'equal))
+
 (defparameter *static-table-bindings* nil)
 (defparameter *static-tablespace* (make-hash-table :test 'equal))
 
@@ -11,6 +13,19 @@
    (value-count :initarg :value-count :accessor static-column-value-count)
    (length :initarg :length :accessor static-column-length)
    (type :initarg :type :accessor static-column-type)))
+
+(defun get-global-table-columns (table-name)
+  (gethash table-name *global-static-tablespace*))
+
+(defun add-global-table-reference (table-name columns)
+  (setf (gethash table-name *global-static-tablespace*)
+        columns))
+
+(defun clear-global-table-reference (table-name)
+  (remhash table-name *global-static-tablespace*))
+
+(defun clear-global-table-references ()
+  (clrhash *global-static-tablespace*))
 
 (defun add-table-reference (columns)
   (let ((table-id (format nil "~a" (uuid:make-v4-uuid))))
@@ -45,7 +60,7 @@
   `(etypecase ,vector
      ,@(static-table-column-types)))
 
-(defun make-static-column (name values &key column-type length)
+(defun make-static-column (name values column-type &key length)
   (let* ((value-count (length values))
          (column-length (or length
                             value-count)))
@@ -60,13 +75,14 @@
   (loop :for (column-name . column) :in columns
         :collect
         (cond
-          ((vectorp column) (make-static-column column-name column))
+          ((vectorp column) (make-static-column column-name column nil))
           ((listp column) (apply #'make-static-column (cons column-name
                                                             column))))))
 
 (defcstruct static-table-bind-data-struct
   (table-name :string)
-  (table-uuid :string))
+  (table-uuid :string)
+  (table-is-global :bool))
 
 (defcallback free-ptr :void ((ptr :pointer))
   (foreign-free ptr))
@@ -81,18 +97,25 @@
                  ;; from the dynamic binding. This id is then used in
                  ;; init & the function stages to load table data from
                  ;; a global hash-table.
-                 (table-id (get-table-id name)))
-            (unless table-id
+                 (table-id (get-table-id name))
+                 (global-table-columns (get-global-table-columns name)))
+            (unless (or table-id global-table-columns)
               (error (format nil "table ~s is undefined" name)))
-            (loop :for column :in (get-table-columns table-id)
+            (loop :for column :in (if table-id
+                                      (get-table-columns table-id)
+                                      global-table-columns)
                   :for column-name := (static-column-name column)
                   :for duckdb-type := (static-column-type column)
                   :do (with-logical-type (type duckdb-type)
                         (duckdb-bind-add-result-column info column-name type)))
-            (with-foreign-slots ((table-name table-uuid) bind-data
+            (with-foreign-slots ((table-name table-uuid table-is-global) bind-data
                                  (:struct static-table-bind-data-struct))
-              (setf table-name name
-                    table-uuid table-id))))
+              (if table-id
+                  (setf table-name name
+                        table-uuid table-id
+                        table-is-global nil)
+                  (setf table-name name
+                        table-is-global t)))))
         (duckdb-bind-set-bind-data info bind-data (callback free-ptr)))
     (error (c)
       (duckdb-bind-set-error info
@@ -185,24 +208,25 @@
   (handler-case
       (let* ((vector-size (duckdb-vector-size))
              (bind-data (duckdb-function-get-bind-data info))
-             (init-data (duckdb-function-get-init-data info))
-             (table-id (foreign-slot-value bind-data
-                                           '(:struct static-table-bind-data-struct)
-                                           'table-uuid)))
-        (with-foreign-slots ((index) init-data (:struct static-table-init-data-struct))
-          (let ((n (loop :for column :in (get-table-columns table-id)
-                         :for values := (static-column-values column)
-                         :for column-index :from 0
-                         :for duckdb-type := (static-column-type column)
-                         :for ffi-type := (get-ffi-type duckdb-type)
-                         :for vector := (duckdb-data-chunk-get-vector output column-index)
-                         :for data-length := (static-column-value-count column)
-                         :for data-ptr := (duckdb-vector-get-data vector)
-                         :maximize (if (listp values)
-                                       (copy-static-list)
-                                       (copy-static-vector)))))
-            (setf index (+ n index))
-            (duckdb-data-chunk-set-size output n))))
+             (init-data (duckdb-function-get-init-data info)))
+        (with-foreign-slots ((table-name table-uuid table-is-global) bind-data
+                             (:struct static-table-bind-data-struct))
+          (with-foreign-slots ((index) init-data (:struct static-table-init-data-struct))
+            (let ((n (loop :for column :in (if table-is-global
+                                               (get-global-table-columns table-name)
+                                               (get-table-columns table-uuid))
+                           :for values := (static-column-values column)
+                           :for column-index :from 0
+                           :for duckdb-type := (static-column-type column)
+                           :for ffi-type := (get-ffi-type duckdb-type)
+                           :for vector := (duckdb-data-chunk-get-vector output column-index)
+                           :for data-length := (static-column-value-count column)
+                           :for data-ptr := (duckdb-vector-get-data vector)
+                           :maximize (if (listp values)
+                                         (copy-static-list)
+                                         (copy-static-vector)))))
+              (setf index (+ n index))
+              (duckdb-data-chunk-set-size output n)))))
     (error (c)
       (duckdb-function-set-error info
                                  (format nil "static_table function - ~a" c)))))
@@ -223,7 +247,7 @@
   (declare (ignore data))
   (handler-case
       (let ((table-id (get-table-id table-name)))
-        (when table-id
+        (when (or table-id (get-global-table-columns table-name))
           (duckdb-replacement-scan-set-function-name info "static_table")
           (with-duckdb-value (s (duckdb-create-varchar table-name))
             (duckdb-replacement-scan-add-parameter info s))))

@@ -373,7 +373,7 @@
         ("booleans" `(("a" . ,(make-array '(6) :element-type 'bit
                                                :initial-contents '(0 1 0 1 0 1)))
                       ("b" . ((t nil :null :false t t)
-                              :column-type :duckdb-boolean))))
+                              :duckdb-boolean))))
       (let ((r1 (ddb:query "SELECT COUNT(*) AS count FROM booleans GROUP BY a" nil))
             (r2 (ddb:query (str:concat "SELECT COUNT(*) AS count FROM booleans "
                                        "GROUP BY b ORDER BY COUNT(b) ASC")
@@ -394,18 +394,18 @@
                       (:duckdb-integer)
                       (:duckdb-ubigint)
                       (:duckdb-bigint)))
-             (table-ids
+             (table-names
                (loop :for (duckdb-type limit) :in types
                      :for integer-list := (loop :for i :below (or limit
                                                                   2000)
                                                 :collect i)
                      :for table-name := (get-table-name duckdb-type)
                      :for columns := `(("i" ,integer-list
-                                            :column-type ,duckdb-type))
-                     :collect (duckdb:create-static-table table-name columns)))
+                                            ,duckdb-type))
+                     :do (ddb:bind-static-table table-name columns)
+                     :collect table-name))
              (queries
-               (loop :for (duckdb-type) :in types
-                     :for table-name := (get-table-name duckdb-type)
+               (loop :for table-name :in table-names
                      :collect
                      (format nil "SELECT sum(i)::integer AS sum FROM \"~a\""
                              table-name))))
@@ -415,8 +415,8 @@
                                 :sum i)
               :do (is (eql sum
                            (ddb:get-result (ddb:query query nil) 'sum 0))))
-        (dolist (table-id table-ids)
-          (ddb:destroy-static-table table-id))))))
+        (dolist (table-name table-names)
+          (ddb:unbind-static-table table-name))))))
 
 #-ecl
 (test static-table-floats
@@ -434,9 +434,30 @@
          (double-query "SELECT sum(d) AS sum FROM doubles"))
     (ddb:with-transient-connection
       (ddb:with-static-tables
-          (("floats" `(("f" . (,floats :column-type :duckdb-float))))
-           ("doubles" `(("d" . (,doubles :column-type :duckdb-double)))))
+          (("floats" `(("f" . (,floats :duckdb-float))))
+           ("doubles" `(("d" . (,doubles :duckdb-double)))))
         (is (eql (car sums)
                  (ddb:get-result (ddb:query float-query nil) 'sum 0)))
         (is (eql (cdr sums)
                  (ddb:get-result (ddb:query double-query nil) 'sum 0)))))))
+
+#-ecl
+(test static-table-scopes
+  (ddb:with-transient-connection
+    (labels ((get-scope (table-name)
+               (ddb:get-result (ddb:query (format nil "SELECT scope FROM ~a"
+                                                  table-name)
+                                          nil)
+                               'scope 0))
+             (get-columns (value)
+               `(("scope" . ((,value) :duckdb-varchar)))))
+      (let ((table-name (str:snake-case (format nil "test_~a" (uuid:make-v4-uuid)))))
+        (ddb:bind-static-table table-name (get-columns "global1"))
+        (is (string= "global1" (get-scope table-name)))
+        (ddb:with-static-table (table-name (get-columns "inner"))
+          (is (string= "inner" (get-scope table-name)))
+          (ddb:with-static-table (table-name (get-columns "innermost"))
+            (ddb:bind-static-table table-name (get-columns "global2"))
+            (is (string= "innermost" (get-scope table-name)))))
+        (is (string= "global2" (get-scope table-name)))
+        (ddb:unbind-static-table table-name)))))

@@ -92,7 +92,7 @@
       (ddb:with-transient-connection
         (with-benchmark-sampling
           (ddb:with-static-table
-              ("integers" `(("i" . (,integers :column-type :duckdb-integer))))
+              ("integers" `(("i" . (,integers :duckdb-integer))))
             (ddb:query "SELECT sum(i) FROM integers" nil)))))))
 
 (define-benchmark measure-static-table-boolean-vector-count ()
@@ -104,7 +104,7 @@
       (ddb:with-transient-connection
         (with-benchmark-sampling
           (ddb:with-static-table
-              ("booleans" `(("v" . (,booleans :column-type :duckdb-boolean))))
+              ("booleans" `(("v" . (,booleans :duckdb-boolean))))
             (ddb:query "SELECT v, COUNT(*) FROM booleans GROUP BY v" nil)))))))
 
 (define-benchmark measure-static-table-boolean-list-count ()
@@ -114,7 +114,7 @@
       (ddb:with-transient-connection
         (with-benchmark-sampling
           (ddb:with-static-table
-              ("booleans" `(("v" . (,values :column-type :duckdb-boolean))))
+              ("booleans" `(("v" . (,values :duckdb-boolean))))
             (ddb:query "SELECT v, COUNT(*) FROM booleans GROUP BY v" nil)))))))
 
 (defun floatify-results (benchmark-results)
