@@ -126,6 +126,7 @@
            #:with-default-connection
            #:with-transient-connection
            #:query
+           #:format-query
            #:run
            #:get-result
            #:quote-identifier

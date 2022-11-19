@@ -185,8 +185,22 @@ the following values:
                                   :initial-contents '(2 3 5 7 11 13 17 19 23 29))))
     (ddb:with-static-table ("primes" `(("i" . ,indexes)
                                        ("p" . ,primes)))
-      (ddb:query "SELECT * FROM primes" nil)))
-  ;; => (("i" . #(1 2 3 4 5 6 7 8 9 10)) ("p" . #(2 3 5 7 11 13 17 19 23 29)))
+      (ddb:format-query "SELECT * FROM primes" nil)))
+  ;; +----+----+
+  ;; | i  | p  |
+  ;; +----+----+
+  ;; |  1 |  2 |
+  ;; |  2 |  3 |
+  ;; |  3 |  5 |
+  ;; |  4 |  7 |
+  ;; |  5 | 11 |
+  ;; |  6 | 13 |
+  ;; |  7 | 17 |
+  ;; |  8 | 19 |
+  ;; |  9 | 23 |
+  ;; | 10 | 29 |
+  ;; +----+----+
+  ;;  => NIL
 
   ;; DuckDB column types always have to be specified for lists (NIL
   ;; values are converted to NULL):
@@ -219,8 +233,17 @@ the following values:
 
   (ddb:with-static-table ("bools" `(("v" . ((nil t :false :true :null)
                                             :duckdb-boolean))))
-    (ddb:query "SELECT v, v IS NULL AS is_null FROM bools" nil))
-  ;; => (("v" . #(NIL T NIL T NIL)) ("is_null" . #(NIL NIL NIL NIL T)))
+    (ddb:format-query "SELECT v, v IS NULL AS is_null FROM bools" nil))
+  ;; +-----+---------+
+  ;; | v   | is_null |
+  ;; +-----+---------+
+  ;; | NIL | NIL     |
+  ;; | T   | NIL     |
+  ;; | NIL | NIL     |
+  ;; | T   | NIL     |
+  ;; | NIL | T       |
+  ;; +-----+---------+
+  ;; => NIL
 
   ;; Static tables can be managed in the global scope using the
   ;; BIND-STATIC-TABLE, UNBIND-STATIC-TABLE and CLEAR-STATIC-TABLES

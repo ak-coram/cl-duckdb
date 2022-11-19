@@ -248,15 +248,18 @@ cleanup."
                                 (:duckdb-enum (let ((enum-alist aux))
                                                 (alexandria:assoc-value enum-alist v)))
                                 (t v))))
-            :do (vector-push-extend value results chunk-size)))))
+            :do (vector-push-extend value results chunk-size)
+            :finally (return vector-type)))))
 
 (defun translate-chunk (result-alist chunk)
   (let ((column-count (duckdb-api:duckdb-data-chunk-get-column-count chunk))
         (chunk-size (duckdb-api:duckdb-data-chunk-get-size chunk)))
-    (loop :for column-index :below column-count
-          :for entry :in result-alist
-          :for vector := (duckdb-api:duckdb-data-chunk-get-vector chunk column-index)
-          :do (translate-vector chunk-size vector (cdr entry)))))
+    (values
+     (loop :for column-index :below column-count
+           :for entry :in result-alist
+           :for vector := (duckdb-api:duckdb-data-chunk-get-vector chunk column-index)
+           :collect (translate-vector chunk-size vector (cdr entry)))
+     chunk-size)))
 
 (defun translate-result (result)
   (let* ((p-result (handle result))
@@ -265,11 +268,16 @@ cleanup."
          (result-alist
            (loop :for column-index :below column-count
                  :collect (cons (duckdb-api:duckdb-column-name p-result column-index)
-                                (make-array '(0) :adjustable t :fill-pointer 0)))))
-    (loop :for chunk-index :below chunk-count
-          :do (duckdb-api:with-data-chunk (chunk p-result chunk-index)
-                (translate-chunk result-alist chunk)))
-    result-alist))
+                                (make-array '(0) :adjustable t :fill-pointer 0))))
+         column-types
+         (row-count
+           (loop :for chunk-index :below chunk-count
+                 :sum (duckdb-api:with-data-chunk (chunk p-result chunk-index)
+                        (multiple-value-bind (types chunk-size)
+                            (translate-chunk result-alist chunk)
+                          (setf column-types types)
+                          chunk-size)))))
+    (values result-alist column-types row-count)))
 
 (defun assert-parameter-count (statement values)
   (let ((statement-parameter-count (parameter-count statement))
@@ -401,7 +409,7 @@ binding a bit more concise. It is not intended for any other use."
     (when parameters
       (bind-parameters statement parameters))
     (with-execute (result statement)
-      (translate-result result))))
+      (nth-value 0 (translate-result result)))))
 
 (defun run (&rest queries)
   (loop :for q :in queries
@@ -423,6 +431,24 @@ binding a bit more concise. It is not intended for any other use."
       (if n
           (aref result-values n)
           result-values))))
+
+(defun format-query (query parameters
+                     &key (connection *connection*) (stream *standard-output*))
+  (with-statement (statement query :connection connection)
+    (when parameters
+      (bind-parameters statement parameters))
+    (with-execute (result statement)
+      (multiple-value-bind (results types row-count) (translate-result result)
+        (declare (ignore types))
+        (let* ((columns (mapcar #'car results))
+               (table (ascii-table:make-table
+                       columns)))
+          (loop :for i :below row-count
+                :do (ascii-table:add-row
+                     table
+                     (loop :for column :in columns
+                           :collect (get-result results column i))))
+          (ascii-table:display table stream))))))
 
 ;;; Appenders
 

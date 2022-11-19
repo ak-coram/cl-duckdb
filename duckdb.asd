@@ -7,6 +7,7 @@
   :serial t
   :depends-on (#:cffi
                #:cffi-libffi
+               #:cl-ascii-table
                #:local-time
                #:local-time-duration
                #:periods
