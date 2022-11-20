@@ -409,10 +409,10 @@ binding a bit more concise. It is not intended for any other use."
     (when parameters
       (bind-parameters statement parameters))
     (with-execute (result statement)
-      (nth-value 0 (translate-result result)))))
+      (translate-result result))))
 
 (defun query (query parameters &key (connection *connection*))
-  (internal-query query parameters :connection connection))
+  (nth-value 0 (internal-query query parameters :connection connection)))
 
 (defun run (&rest queries)
   (loop :for q :in queries
@@ -457,7 +457,7 @@ binding a bit more concise. It is not intended for any other use."
   (let ((values (loop :with results := (query query parameters :connection connection)
                       :for v :across (get-result results column) :collect v)))
     (princ (cl-spark:spark values) stream)
-    nil))
+    (terpri stream)))
 
 (defun vspark-query (query parameters key-column value-column
                      &key (connection *connection*) (stream *standard-output*))
@@ -468,7 +468,7 @@ binding a bit more concise. It is not intended for any other use."
                    :collect value :into values
                    :finally (return (list keys values)))))
     (princ (cl-spark:vspark (cadr kvs) :labels (car kvs)) stream)
-    nil))
+    (terpri stream)))
 
 ;;; Appenders
 
