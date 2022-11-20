@@ -127,6 +127,8 @@
            #:with-transient-connection
            #:query
            #:format-query
+           #:spark-query
+           #:vspark-query
            #:run
            #:get-result
            #:quote-identifier

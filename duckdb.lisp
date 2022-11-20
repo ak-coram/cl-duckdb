@@ -404,12 +404,15 @@ binding a bit more concise. It is not intended for any other use."
       :for duckdb-type :in parameter-types
       :do (generate-parameter-binding-dispatch))))
 
-(defun query (query parameters &key (connection *connection*))
+(defun internal-query (query parameters &key (connection *connection*))
   (with-statement (statement query :connection connection)
     (when parameters
       (bind-parameters statement parameters))
     (with-execute (result statement)
       (nth-value 0 (translate-result result)))))
+
+(defun query (query parameters &key (connection *connection*))
+  (internal-query query parameters :connection connection))
 
 (defun run (&rest queries)
   (loop :for q :in queries
@@ -434,21 +437,38 @@ binding a bit more concise. It is not intended for any other use."
 
 (defun format-query (query parameters
                      &key (connection *connection*) (stream *standard-output*))
-  (with-statement (statement query :connection connection)
-    (when parameters
-      (bind-parameters statement parameters))
-    (with-execute (result statement)
-      (multiple-value-bind (results types row-count) (translate-result result)
-        (declare (ignore types))
-        (let* ((columns (mapcar #'car results))
-               (table (ascii-table:make-table
-                       columns)))
-          (loop :for i :below row-count
-                :do (ascii-table:add-row
-                     table
-                     (loop :for column :in columns
-                           :collect (get-result results column i))))
-          (ascii-table:display table stream))))))
+  (multiple-value-bind (results types row-count)
+      (internal-query query
+                      parameters
+                      :connection connection)
+    (declare (ignore types))
+    (let* ((columns (mapcar #'car results))
+           (table (ascii-table:make-table
+                   columns)))
+      (loop :for i :below row-count
+            :do (ascii-table:add-row
+                 table
+                 (loop :for column :in columns
+                       :collect (get-result results column i))))
+      (ascii-table:display table stream))))
+
+(defun spark-query (query parameters column
+                    &key (connection *connection*) (stream *standard-output*))
+  (let ((values (loop :with results := (query query parameters :connection connection)
+                      :for v :across (get-result results column) :collect v)))
+    (princ (cl-spark:spark values) stream)
+    nil))
+
+(defun vspark-query (query parameters key-column value-column
+                     &key (connection *connection*) (stream *standard-output*))
+  (let ((kvs (loop :with results := (query query parameters :connection connection)
+                   :for key :across (get-result results key-column)
+                   :for value :across (get-result results value-column)
+                   :collect key :into keys
+                   :collect value :into values
+                   :finally (return (list keys values)))))
+    (princ (cl-spark:vspark (cadr kvs) :labels (car kvs)) stream)
+    nil))
 
 ;;; Appenders
 

@@ -8,6 +8,7 @@
   :depends-on (#:cffi
                #:cffi-libffi
                #:cl-ascii-table
+               #:cl-spark
                #:local-time
                #:local-time-duration
                #:periods
