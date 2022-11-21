@@ -452,23 +452,46 @@ binding a bit more concise. It is not intended for any other use."
                        :collect (get-result results column i))))
       (ascii-table:display table stream))))
 
-(defun spark-query (query parameters column
-                    &key (connection *connection*) (stream *standard-output*))
-  (let ((values (loop :with results := (query query parameters :connection connection)
-                      :for v :across (get-result results column) :collect v)))
-    (princ (cl-spark:spark values) stream)
-    (terpri stream)))
+(defun spark-query (query parameters columns
+                    &rest args
+                    &key
+                      (connection *connection*)
+                      (stream *standard-output*)
+                    &allow-other-keys)
+  (loop :with results := (query query parameters :connection connection)
+        :for column :in columns
+        :for values := (loop :for v :across (get-result results column) :collect v)
+        :do (format stream "~a ~a~%" column
+                    (apply #'cl-spark:spark values
+                           (alexandria:remove-from-plist args
+                                                         :connection
+                                                         :stream)))))
 
-(defun vspark-query (query parameters key-column value-column
-                     &key (connection *connection*) (stream *standard-output*))
-  (let ((kvs (loop :with results := (query query parameters :connection connection)
-                   :for key :across (get-result results key-column)
-                   :for value :across (get-result results value-column)
-                   :collect key :into keys
-                   :collect value :into values
-                   :finally (return (list keys values)))))
-    (princ (cl-spark:vspark (cadr kvs) :labels (car kvs)) stream)
-    (terpri stream)))
+(defun vspark-query (query parameters label-column value-column
+                     &rest args
+                     &key
+                       (connection *connection*)
+                       (stream *standard-output*)
+                     &allow-other-keys)
+  (let* ((results (query query parameters :connection connection))
+         (values (if label-column
+                     (loop :for label :across (get-result results label-column)
+                           :for value :across (get-result results value-column)
+                           :collect label :into labels
+                           :collect value :into values
+                           :finally (return (list labels values)))
+                     (loop :for value :across (get-result results value-column)
+                           :collect value)))
+         (vspark-args (alexandria:remove-from-plist args
+                                                    :connection
+                                                    :stream))
+         (vspark (if label-column
+                     (apply #'cl-spark:vspark (cadr values) :labels (car values)
+                            vspark-args)
+                     (apply #'cl-spark:vspark values vspark-args))))
+    (if stream
+        (prog () (princ vspark stream))
+        vspark)))
 
 ;;; Appenders
 
