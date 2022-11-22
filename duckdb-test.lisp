@@ -22,10 +22,16 @@
           (is (equalp (get-thread-counts) (vector 1 0)))))
       (ddb:with-threads 2
         (ddb:with-transient-connection
-          (is (equalp (get-thread-counts) (vector 1 1)))))
+          (is (equalp (get-thread-counts)
+                      (if bt:*supports-threads-p*
+                          (vector 1 1)
+                          (vector 1 0))))))
       (ddb:with-threads t
         (ddb:with-transient-connection
-          (is (equalp (get-thread-counts) (vector 1 (1- cpu-count)))))))))
+          (is (equalp (get-thread-counts)
+                      (if bt:*supports-threads-p*
+                          (vector 1 (1- cpu-count))
+                          (vector 1 0)))))))))
 
 (defmacro test-query (query parameters result-syms &body body)
   (alexandria:with-gensyms (db conn results)
