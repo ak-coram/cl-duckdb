@@ -46,18 +46,23 @@
 
 (defun open-database (&key (path ":memory:") (threads #-ECL nil #+ECL t))
   "Opens and returns database for PATH with \":memory:\" as default.
-If THREADS is a positive integer, a thread pool with a matching number
-of threads is used to replace the internal thread management of
-DuckDB (when set to T, the number of CPU cores is used instead). This
-is only enabled on ECL with thread support by default.
+
+If THREADS is a positive integer or T, a new thread pool is created to
+replace the internal thread management of DuckDB. This is only enabled
+on ECL with threading support by default.
+
+Since the number of threads doing work also includes the main calling
+thread, the actual size of the thread pool is (1- THREADS). When
+THREADS is set to T, the number of CPUs minus one is used instead.
 
 See CLOSE-DATABASE for cleanup."
-  (make-instance 'database :path path
-                           :threads
-                           (when (and threads bt:*supports-threads-p*)
-                             (etypecase threads
-                               ((integer 1) threads)
-                               (boolean (cpus:get-number-of-processors))))))
+  (make-instance 'database
+                 :path path
+                 :threads
+                 (when (and threads bt:*supports-threads-p*)
+                   (1- (etypecase threads
+                         ((integer 1) threads)
+                         (boolean (cpus:get-number-of-processors)))))))
 
 (defun close-database (database)
   "Does resource cleanup for DATABASE, also see OPEN-DATABASE."
