@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        lisp: [sbcl-bin]
+        lisp: [sbcl-bin, ccl-bin/1.12.1, ecl/21.2.1]
         os: [ubuntu-latest]
         duckdb: [0.6.0]
     env:
