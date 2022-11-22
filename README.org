@@ -138,10 +138,10 @@ Please note that the API is experimental and subject to changes.
 
 *** Querying Lisp vectors and lists as table columns
 
-Currently only SBCL & CCL are supported with the following types (the
-values are currently copied into DuckDB data chunks internally). Using
-a combination of vectors and list for different columns is possible,
-but each column should have the same length. Tables using Lisp data
+Currently only the following types are supported (the values are
+currently copied into DuckDB data chunks internally). Using a
+combination of vectors and list for different columns is possible, but
+each column should have the same length. Tables using Lisp data
 structures are not bound to a single connection and work across
 different ones.
 
