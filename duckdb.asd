@@ -9,6 +9,7 @@
                #:cffi
                #:cffi-libffi
                #:cl-ascii-table
+               #:cl-cpus
                #:cl-spark
                #:local-time
                #:local-time-duration
