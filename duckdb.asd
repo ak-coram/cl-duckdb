@@ -5,7 +5,8 @@
   :author "Ákos Kiss <ak@coram.pub>"
   :license  "MIT License"
   :serial t
-  :depends-on (#:cffi
+  :depends-on (#:bordeaux-threads
+               #:cffi
                #:cffi-libffi
                #:cl-ascii-table
                #:cl-spark

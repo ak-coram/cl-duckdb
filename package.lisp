@@ -100,7 +100,10 @@
            #:clear-table-reference
            #:clear-table-references
            #:register-static-table-function
-           #:add-static-table-replacement-scan))
+           #:add-static-table-replacement-scan
+           #:with-config
+           #:start-worker-pool
+           #:stop-worker-pool))
 
 (defpackage #:duckdb
   (:nicknames #:ddb)

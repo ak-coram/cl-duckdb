@@ -16,41 +16,56 @@
 
 (defclass database ()
   ((handle :accessor handle)
-   (path :accessor path)))
+   (path :accessor path)
+   (threads :accessor threads)
+   (worker-pool :accessor worker-pool)))
 
 (defmethod initialize-instance :after
-    ((instance database) &key path)
+    ((instance database) &key path threads)
   (with-foreign-object (p-database 'duckdb-api:duckdb-database)
     (with-foreign-object (p-error-message '(:pointer :string))
-      (let* (;; prefer duckdb-open-ext over duckdb-open for error message
-             (result (duckdb-api:duckdb-open-ext path
-                                                 p-database
-                                                 (null-pointer)
-                                                 p-error-message)))
-        (if (eq result :duckdb-success)
-            (let ((handle (mem-ref p-database 'duckdb-api:duckdb-database)))
-              (duckdb-api:add-static-table-replacement-scan handle)
-              (setf (handle instance) handle
-                    (path instance) path))
-            (error 'duckdb-error
-                   :error-message (duckdb-api:get-message p-error-message)))))))
+      (duckdb-api:with-config (config (when threads
+                                        (list "threads" 1
+                                              "external_threads" threads)))
+        (let* (;; prefer duckdb-open-ext over duckdb-open for error message
+               (result (duckdb-api:duckdb-open-ext path
+                                                   p-database
+                                                   config
+                                                   p-error-message)))
+          (if (eq result :duckdb-success)
+              (let* ((handle (mem-ref p-database 'duckdb-api:duckdb-database))
+                     (pool (when threads
+                             (duckdb-api:start-worker-pool handle threads))))
+                (duckdb-api:add-static-table-replacement-scan handle)
+                (setf (handle instance) handle
+                      (path instance) path
+                      (threads instance) threads
+                      (worker-pool instance) pool))
+              (error 'duckdb-error
+                     :error-message (duckdb-api:get-message p-error-message))))))))
 
-(defun open-database (&optional path)
+(defun open-database (&key (path ":memory:") (threads #-ECL nil #+ECL 12))
   "Opens and returns database for PATH with \":memory:\" as default.
 See CLOSE-DATABASE for cleanup."
-  (make-instance 'database :path (or path ":memory:")))
+  (make-instance 'database :path path
+                           :threads (when bt:*supports-threads-p*
+                                      threads)))
 
 (defun close-database (database)
   "Does resource cleanup for DATABASE, also see OPEN-DATABASE."
   (with-foreign-object (p-database 'duckdb-api:duckdb-database)
+    (duckdb-api:stop-worker-pool (worker-pool database))
     (setf (mem-ref p-database 'duckdb-api:duckdb-database)
           (handle database))
     (duckdb-api:duckdb-close p-database)))
 
-(defmacro with-open-database ((database-var &key path) &body body)
+(defmacro with-open-database ((database-var &key path threads) &body body)
   "Opens database for PATH, binds it to DATABASE-VAR.
 The database is closed after BODY is evaluated."
-  `(let ((,database-var (open-database ,path)))
+  `(let ((,database-var (open-database ,@(when path
+                                           `(:path ,path))
+                                       ,@(when threads
+                                           `(:threads ,threads)))))
      (unwind-protect (progn ,@body)
        (close-database ,database-var))))
 
@@ -97,10 +112,10 @@ It is intended to make interactive use more convenient and is used as
 the default connection for functions where CONNECTION is an optional
 or a keyword parameter.")
 
-(defun initialize-default-connection (&optional path)
+(defun initialize-default-connection (&rest args &key &allow-other-keys)
   "Connects to database for PATH and sets the value of *CONNECTION*.
 Also see DISCONNECT-DEFAULT-CONNECTION for cleanup."
-  (setf *connection* (connect (open-database path))))
+  (setf *connection* (connect (apply #'open-database args))))
 
 (defun disconnect-default-connection ()
   "Disconnects *CONNECTION* and also closes the related database.

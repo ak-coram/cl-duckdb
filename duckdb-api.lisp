@@ -794,3 +794,90 @@
 (defcfun duckdb-replacement-scan-set-error :void
   (info duckdb-replacement-scan-info)
   (error :string))
+
+;;; Configuration
+
+(defcfun duckdb-create-config duckdb-state
+  (out-config (:pointer duckdb-config)))
+
+(defcfun duckdb-set-config duckdb-state
+  (config duckdb-config)
+  (name :string)
+  (option :string))
+
+(defcfun duckdb-destroy-config :void
+  (config (:pointer duckdb-config)))
+
+(defun create-config ()
+  (with-foreign-object (p-config 'duckdb-config)
+    (duckdb-create-config p-config)
+    (mem-ref p-config 'duckdb-config)))
+
+(defun destroy-config (config)
+  (with-foreign-object (p-config 'duckdb-config)
+    (setf (mem-ref p-config 'duckdb-config) config)
+    (duckdb-destroy-config p-config)))
+
+(defmacro with-config ((config-var config-plist) &body body)
+  (alexandria:with-gensyms (name option)
+    `(let ((,config-var (create-config)))
+       (unwind-protect
+            (progn
+              (alexandria:doplist (,name ,option ,config-plist)
+                (duckdb-set-config ,config-var
+                                   ,name
+                                   (format nil "~a" ,option)))
+              ,@body)
+         (destroy-config ,config-var)))))
+
+;;; Threads
+
+(defctype duckdb-task-state (:pointer :void))
+
+(defcfun duckdb-execute-tasks :void
+  (database duckdb-database)
+  (max-tasks idx))
+
+(defcfun duckdb-create-task-state duckdb-task-state
+  (database duckdb-database))
+
+(defcfun duckdb-execute-tasks-state :void
+  (state duckdb-task-state))
+
+(defcfun duckdb-execute-n-tasks-state idx
+  (state duckdb-task-state)
+  (max-tasks idx))
+
+(defcfun duckdb-finish-execution :void
+  (state duckdb-task-state))
+
+(defcfun duckdb-task-state-is-finished :bool
+  (state duckdb-task-state))
+
+(defcfun duckdb-destroy-task-state :void
+  (state duckdb-task-state))
+
+(defclass worker-pool ()
+  ((task-state :initarg :task-state :accessor task-state)
+   (worker-threads :initarg :worker-threads :accessor worker-threads)))
+
+(defun start-worker-pool (database n)
+  (let* ((task-state (duckdb-create-task-state database))
+         (worker-threads
+           (loop :for i :below n
+                 :collect (bt:make-thread
+                           (lambda ()
+                             (duckdb-execute-tasks-state task-state))
+                           :name (format nil "DuckDB worker thread #~a" i)))))
+    (make-instance 'worker-pool :task-state task-state :worker-threads worker-threads)))
+
+(defun stop-worker-pool (pool)
+  (when pool
+    (let ((task-state (task-state pool))
+          (worker-threads (worker-threads pool)))
+      (duckdb-finish-execution task-state)
+      (loop :for worker-thread :in worker-threads
+            :when (bt:thread-alive-p worker-thread)
+              :do (bt:join-thread worker-thread)
+            :finally (duckdb-destroy-task-state task-state)))))
+

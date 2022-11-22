@@ -366,7 +366,6 @@
             :for tuber :in tubers
             :do (ddb:append-row appender (list tuber))))))
 
-#-ecl
 (test static-table-booleans
   (ddb:with-transient-connection
     (ddb:with-static-table
@@ -381,7 +380,6 @@
         (is (equalp (ddb:get-result r1 'count) #(3 3)))
         (is (equalp (ddb:get-result r2 'count) #(1 2 3)))))))
 
-#-ecl
 (test static-table-integers
   (labels ((get-table-name (type)
              (format nil "~a" type)))
@@ -418,7 +416,6 @@
         (dolist (table-name table-names)
           (ddb:unbind-static-table table-name))))))
 
-#-ecl
 (test static-table-floats
   (let* ((floats nil)
          (doubles nil)
@@ -441,7 +438,6 @@
         (is (eql (cdr sums)
                  (ddb:get-result (ddb:query double-query nil) 'sum 0)))))))
 
-#-ecl
 (test static-table-scopes
   (ddb:with-transient-connection
     (labels ((get-scope (table-name)
