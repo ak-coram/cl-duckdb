@@ -43,6 +43,33 @@ distribution:
   (ql:quickload :duckdb)
 #+end_src
 
+*** ECL CFFI method
+
+If you're using ECL and a suitable C or C++ compiler is available,
+it's recommended to set CFFI-SYS:*CFFI-ECL-METHOD* to :C/C++ before
+compiling cl-duckdb (especially for running benchmarks). This way ECL
+can compile FFI code as C/C++ statements and doesn't need to rely on
+libffi, resulting in significantly better runtime performance. The
+other supported implementations (SBCL & CCL) only use libffi for
+passing C structs as values, so this isn't much of an issue.
+
+#+begin_src lisp
+  ;; Tell the linker to link with DuckDB (up to ECL-21.2.1, later
+  ;; versions should use COMPILER:*USER-LINKER-LIBS* instead):
+  (setf compiler:*user-ld-flags* "-lduckdb")
+
+  ;; CFFI needs to be loaded first:
+  (ql:quickload :cffi)
+
+  ;; Set the CFFI ECL method:
+  (setf cffi-sys:*cffi-ecl-method* :c/c++)
+
+  ;; Finally load cl-duckdb:
+  (ql:quickload :duckdb)
+#+end_src
+
+Alternatively this could also be added to ~/.eclrc.
+
 ** Development setup
 
 - Install [[https://www.quicklisp.org/][Quicklisp]]

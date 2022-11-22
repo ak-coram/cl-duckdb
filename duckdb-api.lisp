@@ -404,9 +404,6 @@
   (index idx)
   (str :string))
 
-(defcfun duckdb-vector-get-size idx
-  (vector duckdb-vector))
-
 (defcfun duckdb-validity-row-is-valid :bool
   (validity p-validity)
   (row idx))
@@ -682,7 +679,7 @@
   (connection duckdb-connection)
   (function duckdb-table-function))
 
-(defcfun duckdb-table-function-get-extra-info (:pointer :void)
+(defcfun duckdb-function-get-extra-info (:pointer :void)
   (info duckdb-bind-info))
 
 (defcfun duckdb-bind-add-result-column :void
