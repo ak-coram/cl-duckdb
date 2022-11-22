@@ -7,6 +7,26 @@
 (def-suite :duckdb)
 (in-suite :duckdb)
 
+(test thread-setup
+  (let ((query (str:concat "SELECT current_setting('threads') AS n"
+                           " UNION ALL "
+                           "SELECT current_setting('external_threads') AS n"))
+        (cpu-count (cpus:get-number-of-processors)))
+    (labels ((get-thread-counts ()
+               (ddb:get-result (ddb:query query nil) 'n)))
+      (ddb:with-threads nil
+        (ddb:with-transient-connection
+          (is (equalp (get-thread-counts) (vector cpu-count 0)))))
+      (ddb:with-threads 1
+        (ddb:with-transient-connection
+          (is (equalp (get-thread-counts) (vector 1 0)))))
+      (ddb:with-threads 2
+        (ddb:with-transient-connection
+          (is (equalp (get-thread-counts) (vector 1 1)))))
+      (ddb:with-threads t
+        (ddb:with-transient-connection
+          (is (equalp (get-thread-counts) (vector 1 (1- cpu-count)))))))))
+
 (defmacro test-query (query parameters result-syms &body body)
   (alexandria:with-gensyms (db conn results)
     `(ddb:with-open-database (,db)

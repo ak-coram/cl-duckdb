@@ -24,9 +24,12 @@
     ((instance database) &key path threads)
   (with-foreign-object (p-database 'duckdb-api:duckdb-database)
     (with-foreign-object (p-error-message '(:pointer :string))
-      (duckdb-api:with-config (config (when threads
-                                        (list "threads" 1
-                                              "external_threads" threads)))
+      (duckdb-api:with-config
+          (config (when threads
+                    (list "threads" 1
+                          "external_threads" (if bt:*supports-threads-p*
+                                                 threads
+                                                 0))))
         (let* (;; prefer duckdb-open-ext over duckdb-open for error message
                (result (duckdb-api:duckdb-open-ext path
                                                    p-database
@@ -34,7 +37,9 @@
                                                    p-error-message)))
           (if (eq result :duckdb-success)
               (let* ((handle (mem-ref p-database 'duckdb-api:duckdb-database))
-                     (pool (when threads
+                     (pool (when (and bt:*supports-threads-p*
+                                      threads
+                                      (plusp threads))
                              (duckdb-api:start-worker-pool handle threads))))
                 (duckdb-api:add-static-table-replacement-scan handle)
                 (setf (handle instance) handle
@@ -44,22 +49,35 @@
               (error 'duckdb-error
                      :error-message (duckdb-api:get-message p-error-message))))))))
 
-(defun open-database (&key (path ":memory:") (threads #-ECL nil #+ECL t))
+(defvar *threads*
+  #-ECL nil
+  #+ECL bt:*supports-threads-p*
+  "Default value for the number of threads when opening a new database.
+
+NIL: DuckDB internal thread management is used. Use SQL pragmas to
+adjust the defaults (e.g. PRAGMA threads=4).
+
+N (where N > 0): DuckDB internal thread management is turned off. When
+N is larger than one and the implementation supports threads, a thread
+pool of size N-1 is created and used for parallel query execution. The
+thread pool is shut down when the database is closed.
+
+T: See above, but the number of CPUs is used to determine N. This is
+used by default on ECL if it's built with support for threading.")
+
+(defmacro with-threads (threads &body body)
+  `(let ((*threads* ,threads))
+     (progn ,@body)))
+
+(defun open-database (&key (path ":memory:") (threads *threads*))
   "Opens and returns database for PATH with \":memory:\" as default.
 
-If THREADS is a positive integer or T, a new thread pool is created to
-replace the internal thread management of DuckDB. This is only enabled
-on ECL with threading support by default.
-
-Since the number of threads doing work also includes the main calling
-thread, the actual size of the thread pool is (1- THREADS). When
-THREADS is set to T, the number of CPUs minus one is used instead.
-
-See CLOSE-DATABASE for cleanup."
+See CLOSE-DATABASE for cleanup and *THREADS* for the supported values
+for THREADS."
   (make-instance 'database
                  :path path
                  :threads
-                 (when (and threads bt:*supports-threads-p*)
+                 (when threads
                    (1- (etypecase threads
                          ((integer 1) threads)
                          (boolean (cpus:get-number-of-processors)))))))

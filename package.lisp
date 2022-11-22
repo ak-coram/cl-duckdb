@@ -109,6 +109,8 @@
   (:nicknames #:ddb)
   (:use #:cl #:cffi)
   (:export #:*connection*
+           #:*threads*
+           #:with-threads
            #:open-database
            #:close-database
            #:connect
