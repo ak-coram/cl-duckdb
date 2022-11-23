@@ -679,9 +679,6 @@
   (connection duckdb-connection)
   (function duckdb-table-function))
 
-(defcfun duckdb-function-get-extra-info (:pointer :void)
-  (info duckdb-bind-info))
-
 (defcfun duckdb-bind-add-result-column :void
   (info duckdb-bind-info)
   (name :string)
