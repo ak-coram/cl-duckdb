@@ -28,8 +28,6 @@ jobs:
             cffi: static
           - lisp: ccl-bin/1.12.1
             cffi: static
-          - os: macos-latest
-            cffi: static
     env:
       LISP: ${{ matrix.lisp }}
       DUCKDB_VERSION: ${{ matrix.duckdb }}
@@ -71,6 +69,7 @@ jobs:
           export LD_LIBRARY_PATH=./
           if [ ${{ matrix.cffi }} = 'static' ]; then export CL_DUCKDB_USE_SFFI=t; fi
           export CL_DUCKDB_LIBRARY_PATH="${{ github.workspace }}"
+          if [ ${{ matrix.os }} = 'macos-latest' ]; then sudo cp ./libduckdb.dylib /usr/local/lib/; fi
           ros install neil-lindquist/ci-utils
           run-fiveam -e t -l duckdb/test :duckdb
 
@@ -80,6 +79,8 @@ jobs:
         run: |
           export C_INCLUDE_PATH=$C_INCLUDE_PATH:/usr/include/:./
           export LIBRARY_PATH=$LIBRARY_PATH:/usr/lib/:./
-          pacman --noconfirm -S libffi-devel
+          if [ ${{ matrix.cffi }} = 'static' ]; then export CL_DUCKDB_USE_SFFI=t; fi
+          export CL_DUCKDB_LIBRARY_PATH="${{ github.workspace }}"
+          pacman --noconfirm -S libffi-devel pkgconf
           ros install neil-lindquist/ci-utils
           run-fiveam -e t -l duckdb/test :duckdb
