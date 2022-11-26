@@ -17,7 +17,8 @@
                #:serapeum
                #:uuid
                #:uiop)
-  :components ((:file "package")
+  :components ((:file "duckdb-ecl-sffi")
+               (:file "package")
                (:file "duckdb-api")
                (:file "duckdb-static-table")
                (:file "duckdb"))

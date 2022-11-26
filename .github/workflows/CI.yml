@@ -11,18 +11,25 @@ on:
 
 jobs:
   test:
-    name: ${{ matrix.lisp }} on ${{ matrix.os }} with duckdb ${{ matrix.duckdb }}
+    name: ${{ matrix.lisp }} (${{ matrix.cffi }}) on ${{ matrix.os }} with duckdb ${{ matrix.duckdb }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         lisp: [sbcl-bin, ccl-bin/1.12.1, ecl/21.2.1]
         os: [ubuntu-latest, windows-latest, macos-latest]
         duckdb: [0.6.0]
+        cffi: [default, static]
         exclude:
           - os: windows-latest
             lisp: ccl-bin/1.12.1
           - os: windows-latest
             lisp: ecl/21.2.1
+          - lisp: sbcl-bin
+            cffi: static
+          - lisp: ccl-bin/1.12.1
+            cffi: static
+          - os: macos-latest
+            cffi: static
     env:
       LISP: ${{ matrix.lisp }}
       DUCKDB_VERSION: ${{ matrix.duckdb }}
@@ -62,6 +69,8 @@ jobs:
         run: |
           export DYLD_LIBRARY_PATH=./
           export LD_LIBRARY_PATH=./
+          if [ ${{ matrix.cffi }} = 'static' ]; then export CL_DUCKDB_USE_SFFI=t; fi
+          export CL_DUCKDB_LIBRARY_PATH="${{ github.workspace }}"
           ros install neil-lindquist/ci-utils
           run-fiveam -e t -l duckdb/test :duckdb
 
