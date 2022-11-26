@@ -45,8 +45,6 @@ distribution:
 
 *** ECL SFFI
 
-The following is currently only tested on Linux.
-
 If you're using ECL and a suitable C or C++ compiler is available,
 it's recommended to set CFFI-SYS:*CFFI-ECL-METHOD* to :C/C++ before
 compiling cl-duckdb (especially for running benchmarks). This way ECL
