@@ -18,8 +18,8 @@ This is a Common Lisp [[https://cffi.common-lisp.dev/][CFFI]] wrapper around the
 ** Dependencies
 
 Currently the following Common Lisp implementations and operating
-systems are tested via [[https://github.com/ak-coram/cl-duckdb/blob/main/.github/workflows/CI.yml][CI]] on x86-64 (some other BSDs are also known to
-work):
+systems are tested via [[https://github.com/ak-coram/cl-duckdb/blob/main/.github/workflows/CI.yml][CI]] on x86-64. Android via Termux (ECL) and some
+other BSDs are also known to work.
 
 - [[https://sbcl.org/][SBCL]] (Linux, FreeBSD, Windows, macOS)
 - [[https://ccl.clozure.com/][CCL]] (Linux, macOS)
