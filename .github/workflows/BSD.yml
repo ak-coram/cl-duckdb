@@ -11,11 +11,10 @@ on:
 
 jobs:
   test:
-    name: ${{ matrix.lisp }} (${{ matrix.cffi }}) on ${{ matrix.os }}
+    name: ${{ matrix.lisp }} on BSD (${{ matrix.cffi }})
     runs-on: macos-latest
     strategy:
       matrix:
-        os: [FreeBSD]
         lisp: [sbcl-bin, ecl/21.2.1]
         cffi: [default, static]
         exclude:
@@ -27,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Install dependencies & run tests
+      - name: Install dependencies & run tests on FreeBSD
         uses: vmactions/freebsd-vm@v0.3.0
         with:
           usesh: true
@@ -35,6 +34,25 @@ jobs:
           copyback: false
           prepare: |
             sed 's/quarterly/latest/' /etc/pkg/FreeBSD.conf > /tmp/FreeBSD.conf && mv /tmp/FreeBSD.conf /etc/pkg/
+            pkg install -y duckdb bash roswell autoconf texinfo perl5 gmake gcc libffi
+            ln -s /usr/local/bin/gmake /bin/make
+            ln -s /usr/local/bin/bash /usr/local/bin/sh # ugh
+            export PATH=/usr/local/bin/:$PATH
+            ros install ${{ matrix.lisp }}
+            ros install neil-lindquist/ci-utils
+          run: |
+            ros use ${{ matrix.lisp }}
+            ln -s $(pwd) ~/.roswell/local-projects/cl-duckdb
+            if [ ${{ matrix.cffi }} = 'static' ]; then export CL_DUCKDB_USE_SFFI=t; fi
+            ~/.roswell/bin/run-fiveam -e t -l duckdb/test :duckdb
+
+      - name: Install dependencies & run tests on DragonFly BSD
+        uses: vmactions/dragonflybsd-vm@v0.0.6
+        with:
+          usesh: true
+          sync: rsync
+          copyback: false
+          prepare: |
             pkg install -y duckdb bash roswell autoconf texinfo perl5 gmake gcc libffi
             ln -s /usr/local/bin/gmake /bin/make
             ln -s /usr/local/bin/bash /usr/local/bin/sh # ugh
