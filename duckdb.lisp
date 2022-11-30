@@ -80,7 +80,7 @@ for THREADS."
                  (when threads
                    (1- (etypecase threads
                          ((integer 1) threads)
-                         (boolean (serapeum:count-cpus)))))))
+                         (boolean (serapeum:count-cpus :online t)))))))
 
 (defun close-database (database)
   "Does resource cleanup for DATABASE, also see OPEN-DATABASE."

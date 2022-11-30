@@ -11,7 +11,7 @@
   (let ((query (str:concat "SELECT current_setting('threads') AS n"
                            " UNION ALL "
                            "SELECT current_setting('external_threads') AS n"))
-        (cpu-count (serapeum:count-cpus)))
+        (cpu-count (serapeum:count-cpus :online t)))
     (labels ((get-thread-counts ()
                (ddb:get-result (ddb:query query nil) 'n)))
       (ddb:with-threads nil
