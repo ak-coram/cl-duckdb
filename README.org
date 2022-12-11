@@ -509,8 +509,8 @@ via [[https://github.com/tkych/cl-spark][cl-spark]]:
   - [X] TIME
   - [X] UUID
   - [X] ENUM
-- [ ] Support for querying nested / composite types
-  - [ ] List
+- [-] Support for querying nested / composite types
+  - [X] List
   - [ ] Struct
   - [ ] Map
 - [ ] Support for binding nested / composite types

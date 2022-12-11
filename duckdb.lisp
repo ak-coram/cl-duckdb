@@ -279,8 +279,31 @@ cleanup."
           (progn ,@body)
        (destroy-result ,result-var))))
 
+(defmacro translate-value-case (&rest cases)
+  `(case vector-type
+     (:duckdb-decimal (let ((decimal-scale aux))
+                        (* v (expt 10 (- decimal-scale)))))
+     (:duckdb-enum (let ((enum-alist aux))
+                     (alexandria:assoc-value enum-alist v)))
+     ,@cases
+     (t v)))
+
+(defun translate-composite (child-type vector v)
+  (destructuring-bind (offset length) v
+    (loop :with child-vector := (duckdb-api::duckdb-list-vector-get-child vector)
+          :with child-validity := (duckdb-api:duckdb-vector-get-validity child-vector)
+          :with child-data := (duckdb-api:duckdb-vector-get-data child-vector)
+          :with (vector-type internal-type aux) := child-type
+          :with vector-ffi-type := (duckdb-api:get-ffi-type (or internal-type
+                                                                vector-type))
+          :for i :from offset :below (+ offset length)
+          :for v := (mem-aref child-data vector-ffi-type i)
+          :collect (when (duckdb-api:duckdb-validity-row-is-valid child-validity i)
+                     (translate-value-case
+                      (:duckdb-list (translate-composite aux child-vector v)))))))
+
 (defun translate-vector (chunk-size vector results)
-  (multiple-value-bind (vector-type internal-type aux)
+  (destructuring-bind (vector-type internal-type aux)
       (duckdb-api:get-vector-type vector)
     (let* ((vector-ffi-type (duckdb-api:get-ffi-type (or internal-type vector-type)))
            (p-data (duckdb-api:duckdb-vector-get-data vector))
@@ -288,12 +311,8 @@ cleanup."
       (loop :for i :below chunk-size
             :for value := (when (duckdb-api:duckdb-validity-row-is-valid validity i)
                             (let ((v (mem-aref p-data vector-ffi-type i)))
-                              (case vector-type
-                                (:duckdb-decimal (let ((decimal-scale aux))
-                                                   (* v (expt 10 (- decimal-scale)))))
-                                (:duckdb-enum (let ((enum-alist aux))
-                                                (alexandria:assoc-value enum-alist v)))
-                                (t v))))
+                              (translate-value-case
+                               (:duckdb-list (translate-composite aux vector v)))))
             :do (vector-push-extend value results chunk-size)
             :finally (return vector-type)))))
 

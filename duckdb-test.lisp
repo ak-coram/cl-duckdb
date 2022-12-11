@@ -183,6 +183,12 @@
     (let ((result (ddb:query "SELECT 'potato'::tuber AS value" nil)))
       (is (string= "potato" (ddb:get-result result 'value 0))))))
 
+(test query-list
+  (ddb:with-transient-connection
+    (let ((result (ddb:query "SELECT [[[1,2,3],[4,5,6]],[[7,8,9],[10,11,12]]] AS value" nil)))
+      (is (equalp '(((1 2 3) (4 5 6)) ((7 8 9) (10 11 12)))
+                  (ddb:get-result result 'value 0))))))
+
 (test bind-null
   (test-query "SELECT ? IS NULL AS a, ? AS b" (nil nil)
       (a b)

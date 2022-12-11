@@ -106,7 +106,7 @@
                                       global-table-columns)
                   :for column-name := (static-column-name column)
                   :for duckdb-type := (static-column-type column)
-                  :do (with-logical-type (type duckdb-type)
+                  :do (with-logical-type (type (duckdb-create-logical-type duckdb-type))
                         (duckdb-bind-add-result-column info column-name type)))
             (with-foreign-slots ((table-name table-uuid table-is-global) bind-data
                                  (:struct static-table-bind-data-struct))
@@ -233,7 +233,7 @@
 
 (defun register-static-table-function (connection)
   (with-table-function (function)
-    (with-logical-type (type :duckdb-varchar)
+    (with-logical-type (type (duckdb-create-logical-type :duckdb-varchar))
       (duckdb-table-function-set-name function "static_table")
       (duckdb-table-function-add-parameter function type)
       (duckdb-table-function-set-bind function (callback static-table-bind))

@@ -165,6 +165,14 @@
                         :milliseconds milliseconds
                         :microseconds microseconds))))
 
+(defcstruct (duckdb-list :class duckdb-list-type)
+  (offset idx)
+  (length idx))
+
+(defmethod translate-from-foreign (value (type duckdb-list-type))
+  (with-foreign-slots ((offset length) value (:struct duckdb-list))
+    (list offset length)))
+
 (defcenum duckdb-type
   (:duckdb-invalid-type 0)
   (:duckdb-boolean)
@@ -219,7 +227,10 @@
     (:duckdb-timestamp-ms '(:struct duckdb-timestamp))
     (:duckdb-timestamp-ns '(:struct duckdb-timestamp))
     (:duckdb-interval '(:struct duckdb-interval))
-    (:duckdb-uuid '(:struct duckdb-uuid))))
+    (:duckdb-uuid '(:struct duckdb-uuid))
+    (:duckdb-list '(:struct duckdb-list))
+    (:duckdb-struct :void)
+    (:duckdb-map :void)))
 
 (defcstruct duckdb-column)
 
@@ -363,6 +374,11 @@
 (defcfun duckdb-free :void
   (ptr (:pointer :void)))
 
+(defmacro with-free ((var alloc-form) &body body)
+  `(let ((,var ,alloc-form))
+     (unwind-protect (progn ,@body)
+       (duckdb-free ,var))))
+
 (defun get-enum-alist (logical-type)
   (let ((enum-size (duckdb-enum-dictionary-size logical-type)))
     (loop :for index :below enum-size
@@ -370,25 +386,48 @@
           :collect (unwind-protect `(,index . ,(foreign-string-to-lisp ptr))
                      (duckdb-free ptr)))))
 
-(defmacro with-vector-column-type ((type-var vector) &body body)
-  `(let ((,type-var (duckdb-vector-get-column-type ,vector)))
-     (unwind-protect
-          (progn ,@body)
+(defmacro with-logical-type ((logical-type-var alloc-form) &body body)
+  `(let ((,logical-type-var ,alloc-form))
+     (unwind-protect (progn ,@body)
        (with-foreign-object (p-type '(:pointer duckdb-logical-type))
-         (setf (mem-ref p-type 'duckdb-logical-type) ,type-var)
+         (setf (mem-ref p-type 'duckdb-logical-type) ,logical-type-var)
          (duckdb-destroy-logical-type p-type)))))
 
+(defun resolve-logical-type (logical-type)
+  (let ((type (duckdb-get-type-id logical-type)))
+    (case type
+      (:duckdb-decimal (list type
+                             (duckdb-decimal-internal-type logical-type)
+                             (duckdb-decimal-scale logical-type)))
+      (:duckdb-enum (list type
+                          (duckdb-enum-internal-type logical-type)
+                          (get-enum-alist logical-type)))
+      (:duckdb-list
+       (with-logical-type (child-type (duckdb-list-type-child-type logical-type))
+         (list type
+               nil
+               (resolve-logical-type child-type))))
+      (:duckdb-struct
+       (loop :for i :below (duckdb-struct-type-child-count logical-type)
+             :collect
+             (with-logical-type (field-type (duckdb-struct-type-child-type logical-type i))
+               (with-free (p-field-name (duckdb-struct-type-child-name logical-type i))
+                 (cons (foreign-string-to-lisp p-field-name)
+                       (resolve-logical-type field-type))))
+               :into fields
+             :finally (return (list type nil fields))))
+      (:duckdb-map
+       (list type
+             nil
+             (with-logical-type (key-type (duckdb-map-type-key-type logical-type))
+               (with-logical-type (value-type (duckdb-map-type-value-type logical-type))
+                 (list (resolve-logical-type key-type)
+                       (resolve-logical-type value-type))))))
+      (t (list type nil nil)))))
+
 (defun get-vector-type (vector)
-  (with-vector-column-type (logical-type vector)
-    (let ((type (duckdb-get-type-id logical-type)))
-      (case type
-        (:duckdb-decimal (values type
-                                 (duckdb-decimal-internal-type logical-type)
-                                 (duckdb-decimal-scale logical-type)))
-        (:duckdb-enum (values type
-                              (duckdb-enum-internal-type logical-type)
-                              (get-enum-alist logical-type)))
-        (t type)))))
+  (with-logical-type (logical-type (duckdb-vector-get-column-type vector))
+    (resolve-logical-type logical-type)))
 
 (defcfun duckdb-vector-get-data (:pointer :void)
   (vector duckdb-vector))
@@ -625,6 +664,40 @@
 (defcfun duckdb-destroy-logical-type duckdb-logical-type
   (type (:pointer duckdb-type)))
 
+(defcfun duckdb-list-type-child-type duckdb-logical-type
+  (type duckdb-logical-type))
+
+(defcfun duckdb-list-vector-get-child duckdb-vector
+  (vector duckdb-vector))
+
+(defcfun duckdb-map-type-key-type duckdb-logical-type
+  (type duckdb-logical-type))
+
+(defcfun duckdb-map-type-value-type duckdb-logical-type
+  (type duckdb-logical-type))
+
+(defcfun duckdb-struct-type-child-count idx
+  (type duckdb-logical-type))
+
+(defcfun duckdb-struct-type-child-name (:pointer :char)
+  (type duckdb-logical-type)
+  (index idx))
+
+(defcfun duckdb-struct-type-child-type duckdb-logical-type
+  (type duckdb-logical-type)
+  (index idx))
+
+(defcfun duckdb-union-type-member-count idx
+  (type duckdb-logical-type))
+
+(defcfun duckdb-union-type-member-name :string
+  (type duckdb-logical-type)
+  (index idx))
+
+(defcfun duckdb-union-type-member-type duckdb-logical-type
+  (type duckdb-logical-type)
+  (index idx))
+
 (defcfun duckdb-get-int64 :int64
   (value duckdb-value))
 
@@ -746,14 +819,6 @@
 (defcfun duckdb-function-set-error :void
   (info duckdb-bind-info)
   (error :string))
-
-(defmacro with-logical-type ((logical-type-var type) &body body)
-  `(let ((,logical-type-var (duckdb-create-logical-type ,type)))
-     (unwind-protect
-          (progn ,@body)
-       (with-foreign-object (p-type '(:pointer duckdb-logical-type))
-         (setf (mem-ref p-type 'duckdb-logical-type) ,logical-type-var)
-         (duckdb-destroy-logical-type p-type)))))
 
 (defmacro with-duckdb-value ((value-var alloc-form) &body body)
   `(let ((,value-var ,alloc-form))
