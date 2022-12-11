@@ -7,7 +7,9 @@
   :serial t
   :depends-on (#:bordeaux-threads
                #:cffi
-               #:cffi-libffi
+               ;; Don't load libffi on ECL without DFFI
+               (:feature (:or (:not :ecl) :dffi)
+                         #:cffi-libffi)
                #:cl-ascii-table
                #:cl-spark
                #:local-time
