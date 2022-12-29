@@ -687,17 +687,6 @@
   (type duckdb-logical-type)
   (index idx))
 
-(defcfun duckdb-union-type-member-count idx
-  (type duckdb-logical-type))
-
-(defcfun duckdb-union-type-member-name :string
-  (type duckdb-logical-type)
-  (index idx))
-
-(defcfun duckdb-union-type-member-type duckdb-logical-type
-  (type duckdb-logical-type)
-  (index idx))
-
 (defcfun duckdb-get-int64 :int64
   (value duckdb-value))
 
