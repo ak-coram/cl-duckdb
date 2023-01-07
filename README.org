@@ -166,6 +166,8 @@ Please note that the API is experimental and subject to changes.
 
 *** Appenders
 
+[[https://duckdb.org/docs/data/appender][Appenders]] are one of the ways of loading bulk data into DuckDB. They append rows to a single table of a database:
+
 #+begin_src lisp
   (ddb:initialize-default-connection) ; => #<DUCKDB::CONNECTION {100B1088F3}>
 
