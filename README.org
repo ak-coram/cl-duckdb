@@ -1,4 +1,4 @@
-* cl-duckdb (WiP)
+* cl-duckdb [[./ROADMAP.org][(WiP)]]
 
 #+begin_html
 <div align="center">
@@ -460,68 +460,6 @@ via [[https://github.com/tkych/cl-spark][cl-spark]]:
 
   (ddb:query "SELECT ? = ? AS x" '(:true t)) ; => (("x" . #(T)))
 #+end_src
-
-** Roadmap
-
-- [X] Support for querying built-in general-purpose types
-  - [X] NULL
-  - [X] VARCHAR
-  - [X] BOOLEAN
-  - [X] TINYINT
-  - [X] SMALLINT
-  - [X] INTEGER
-  - [X] BIGINT
-  - [X] HUGEINT
-  - [X] UTINYINT
-  - [X] USMALLINT
-  - [X] UINTEGER
-  - [X] UBIGINT
-  - [X] REAL (FLOAT)
-  - [X] DOUBLE
-  - [X] BLOB
-  - [X] DATE
-  - [X] DECIMAL(s, p)
-  - [X] TIMESTAMP
-  - [X] TIMESTAMP WITH TIME ZONE
-  - [X] INTERVAL
-  - [X] TIME
-  - [X] UUID
-  - [X] ENUM
-- [-] Support for binding built-in general-purpose types
-  - [X] NULL
-  - [X] VARCHAR
-  - [X] BOOLEAN
-  - [X] TINYINT
-  - [X] SMALLINT
-  - [X] INTEGER
-  - [X] BIGINT
-  - [X] HUGEINT
-  - [X] UTINYINT
-  - [X] USMALLINT
-  - [X] UINTEGER
-  - [X] UBIGINT
-  - [X] REAL (FLOAT)
-  - [X] DOUBLE
-  - [X] BLOB
-  - [X] DATE
-  - [X] DECIMAL(s, p)
-  - [X] TIMESTAMP
-  - [X] TIMESTAMP WITH TIME ZONE
-  - [ ] INTERVAL
-  - [X] TIME
-  - [X] UUID
-  - [X] ENUM
-- [-] Support for querying nested / composite types
-  - [X] List
-  - [ ] Struct
-  - [ ] Map
-- [ ] Support for binding nested / composite types
-  - [ ] List
-  - [ ] Struct
-  - [ ] Map
-- [X] [[https://duckdb.org/docs/api/c/table_functions][Table functions]]
-- [X] [[https://duckdb.org/docs/api/c/replacement_scans][Replacement scans]]
-- [ ] ...
 
 ** Legal
 
