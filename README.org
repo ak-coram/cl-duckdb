@@ -23,13 +23,21 @@ other BSDs are also known to work.
 
 - [[https://sbcl.org/][SBCL]] (Linux, FreeBSD, Windows, macOS)
 - [[https://ccl.clozure.com/][CCL]] (Linux, macOS)
-- [[https://ecl.common-lisp.dev/][ECL]] (Linux, FreeBSD, macOS)
+- [[https://ecl.common-lisp.dev/][ECL]] (Linux, FreeBSD, macOS), see the [[./ECL.org][ECL.org]] document for specifics
 
 The following native libraries need to be installed in a location
 where CFFI can find them:
 
 - [[https://sourceware.org/libffi/][libffi]]
 - [[https://duckdb.org/][DuckDB]]
+
+For example on Ubuntu or Debian (amd64):
+
+#+begin_src sh
+  sudo apt-get install libffi-dev unzip
+  # Download libduckdb-linux-amd64.zip from the C/C++ section of https://duckdb.org/docs/installation/
+  sudo unzip ~/Downloads/libduckdb-linux-amd64.zip -d /usr/lib/
+#+end_src
 
 ** Installation
 
@@ -41,99 +49,6 @@ distribution:
   (ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)
   ;; Load cl-duckdb
   (ql:quickload :duckdb)
-#+end_src
-
-*** ECL SFFI
-
-If you're using ECL and a suitable C or C++ compiler is available,
-it's recommended to set CFFI-SYS:*CFFI-ECL-METHOD* to :C/C++ before
-compiling cl-duckdb (especially for running benchmarks). This way ECL
-can compile FFI code as C/C++ statements and doesn't need to rely on
-libffi, resulting in significantly better runtime performance. The
-other supported implementations (SBCL & CCL) only use libffi for
-passing C structs as values, so this isn't much of an issue.
-
-This can be enabled automatically using environment variables:
-
-#+begin_src sh
-  # Use C/C++ CFFI ECL method:
-  export CL_DUCKDB_USE_SFFI=t
-  # Optionally extend the search path of the linker:
-  export CL_DUCKDB_LIBRARY_PATH="/my/path/to/DuckDB/library/"
-#+end_src
-
-Alternatively the following can be used instead:
-
-#+begin_src lisp
-  ;; Tell the linker to link with DuckDB (up to ECL-21.2.1, later
-  ;; versions should use COMPILER:*USER-LINKER-LIBS* instead):
-  (setf compiler:*user-ld-flags* "-lduckdb")
-
-  ;; CFFI needs to be loaded first:
-  (ql:quickload :cffi)
-
-  ;; Set the CFFI ECL method:
-  (setf cffi-sys:*cffi-ecl-method* :c/c++)
-
-  ;; Finally load cl-duckdb:
-  (ql:quickload :duckdb)
-#+end_src
-
-If you've loaded cl-duckdb before, you might need to delete the .fas
-files for it from the compiler cache (normally located in
-~/.cache/common-lisp/) for this to take effect. Otherwise you might
-run into errors during compilation.
-
-** Development setup
-
-- Install [[https://www.quicklisp.org/][Quicklisp]]
-- Clone this repository and add it as a local Quicklisp project, for
-  example:
-
-#+begin_src sh
-  git clone git@github.com:ak-coram/cl-duckdb.git ~/Projects/cl-duckdb
-  ln -s ~/Projects/cl-duckdb ~/quicklisp/local-projects/cl-duckdb
-#+end_src
-
-- Start your favored REPL (e.g. sbcl) and load the library using
-  Quicklisp:
-
-#+begin_src lisp
-  (ql:quickload :duckdb)
-#+end_src
-
-*** Running tests
-
-- Load the tests via Quicklisp:
-
-#+begin_src lisp
-  (ql:quickload :duckdb/test)
-#+end_src
-
-- Use [[https://asdf.common-lisp.dev/][ASDF]] or [[https://fiveam.common-lisp.dev/][FiveAM]] to run the tests:
-
-#+begin_src lisp
-  ;; Using ASDF:
-  (asdf:test-system :duckdb)
-  ;; Using FiveAM directly:
-  (fiveam:run! :duckdb)
-#+end_src
-
-*** Running benchmarks
-
-- Load the benchmarks via Quicklisp:
-
-#+begin_src lisp
-  (ql:quickload :duckdb/benchmark)
-#+end_src
-
-- Use [[https://asdf.common-lisp.dev/][ASDF]] or run the benchmarks directly:
-
-#+begin_src lisp
-  ;; Using ASDF:
-  (asdf:test-system :duckdb/benchmark)
-  ;; Running directly:
-  (duckdb/benchmark:run-benchmarks)
 #+end_src
 
 ** Basic usage
@@ -162,6 +77,68 @@ Please note that the API is experimental and subject to changes.
             (parameters '(1000))
             (results (ddb:query euler9-query parameters)))
        (format t "PE9 Solution: ~a~%" (ddb:get-result results 'solution 0))))
+#+end_src
+
+*** Sparks
+
+There's some support for plotting query results directly in the REPL
+via [[https://github.com/tkych/cl-spark][cl-spark]]:
+
+#+begin_src lisp
+  (ddb:initialize-default-connection) ; => #<DUCKDB::CONNECTION {1014081EF3}>
+
+  (ddb:bind-static-table
+   "numbers" `(("x" . (,(loop :for i :from 0d0 :by 0.2 :below pi :collect i)
+                        :duckdb-double)))) ; => NIL
+
+  (ddb:spark-query "SELECT x, sin(x) AS y, cos(x) AS z FROM numbers" nil '(x y z))
+  ;; X ▁▁▁▂▂▃▃▄▄▅▅▆▆▇▇█
+  ;; Y ▁▂▃▄▆▆▇▇█▇▇▆▅▄▃▁
+  ;; Z █▇▇▇▆▆▅▅▄▃▃▂▁▁▁▁
+  ;; => NIL
+
+  (ddb:vspark-query "SELECT pow(2, x) AS y FROM numbers" nil nil 'y)
+  ;; 1.0                    4.5                     8.0
+  ;; ˫-----------------------+------------------------˧
+  ;; ▏
+  ;; █▏
+  ;; ██▎
+  ;; ███▋
+  ;; █████▍
+  ;; ███████▏
+  ;; █████████▎
+  ;; ███████████▋
+  ;; ██████████████▌
+  ;; █████████████████▊
+  ;; █████████████████████▍
+  ;; █████████████████████████▋
+  ;; ██████████████████████████████▌
+  ;; ████████████████████████████████████▎
+  ;; ██████████████████████████████████████████▋
+  ;; ██████████████████████████████████████████████████
+  ;; => NIL
+
+  (ddb:vspark-query "SELECT round(x, 2)::text AS x, sqrt(x) AS y FROM numbers" nil
+                    'x 'y)
+  ;;     0.0            0.8660254             1.7320508
+  ;;     ˫---------------------+----------------------˧
+  ;; 0.0 ▏
+  ;; 0.2 ███████████▉
+  ;; 0.4 ████████████████▊
+  ;; 0.6 ████████████████████▋
+  ;; 0.8 ███████████████████████▊
+  ;; 1.0 ██████████████████████████▌
+  ;; 1.2 █████████████████████████████▏
+  ;; 1.4 ███████████████████████████████▍
+  ;; 1.6 █████████████████████████████████▋
+  ;; 1.8 ███████████████████████████████████▋
+  ;; 2.0 █████████████████████████████████████▌
+  ;; 2.2 ███████████████████████████████████████▍
+  ;; 2.4 █████████████████████████████████████████▎
+  ;; 2.6 ██████████████████████████████████████████▊
+  ;; 2.8 ████████████████████████████████████████████▌
+  ;; 3.0 ██████████████████████████████████████████████
+  ;; => NIL
 #+end_src
 
 *** Appenders
@@ -316,68 +293,6 @@ the following values:
   (ddb:clear-static-tables) ; => NIL
 #+end_src
 
-*** Sparks
-
-There's some support for plotting query results directly in the REPL
-via [[https://github.com/tkych/cl-spark][cl-spark]]:
-
-#+begin_src lisp
-  (ddb:initialize-default-connection) ; => #<DUCKDB::CONNECTION {1014081EF3}>
-
-  (ddb:bind-static-table
-   "numbers" `(("x" . (,(loop :for i :from 0d0 :by 0.2 :below pi :collect i)
-                        :duckdb-double)))) ; => NIL
-
-  (ddb:spark-query "SELECT x, sin(x) AS y, cos(x) AS z FROM numbers" nil '(x y z))
-  ;; X ▁▁▁▂▂▃▃▄▄▅▅▆▆▇▇█
-  ;; Y ▁▂▃▄▆▆▇▇█▇▇▆▅▄▃▁
-  ;; Z █▇▇▇▆▆▅▅▄▃▃▂▁▁▁▁
-  ;; => NIL
-
-  (ddb:vspark-query "SELECT pow(2, x) AS y FROM numbers" nil nil 'y)
-  ;; 1.0                    4.5                     8.0
-  ;; ˫-----------------------+------------------------˧
-  ;; ▏
-  ;; █▏
-  ;; ██▎
-  ;; ███▋
-  ;; █████▍
-  ;; ███████▏
-  ;; █████████▎
-  ;; ███████████▋
-  ;; ██████████████▌
-  ;; █████████████████▊
-  ;; █████████████████████▍
-  ;; █████████████████████████▋
-  ;; ██████████████████████████████▌
-  ;; ████████████████████████████████████▎
-  ;; ██████████████████████████████████████████▋
-  ;; ██████████████████████████████████████████████████
-  ;; => NIL
-
-  (ddb:vspark-query "SELECT round(x, 2)::text AS x, sqrt(x) AS y FROM numbers" nil
-                    'x 'y)
-  ;;     0.0            0.8660254             1.7320508
-  ;;     ˫---------------------+----------------------˧
-  ;; 0.0 ▏
-  ;; 0.2 ███████████▉
-  ;; 0.4 ████████████████▊
-  ;; 0.6 ████████████████████▋
-  ;; 0.8 ███████████████████████▊
-  ;; 1.0 ██████████████████████████▌
-  ;; 1.2 █████████████████████████████▏
-  ;; 1.4 ███████████████████████████████▍
-  ;; 1.6 █████████████████████████████████▋
-  ;; 1.8 ███████████████████████████████████▋
-  ;; 2.0 █████████████████████████████████████▌
-  ;; 2.2 ███████████████████████████████████████▍
-  ;; 2.4 █████████████████████████████████████████▎
-  ;; 2.6 ██████████████████████████████████████████▊
-  ;; 2.8 ████████████████████████████████████████████▌
-  ;; 3.0 ██████████████████████████████████████████████
-  ;; => NIL
-#+end_src
-
 ** Type & Value conversions
 
 | DuckDB Type | Common Lisp Type             | Note                                          |
@@ -460,6 +375,59 @@ via [[https://github.com/tkych/cl-spark][cl-spark]]:
 
   (ddb:query "SELECT ? = ? AS x" '(:true t)) ; => (("x" . #(T)))
 #+end_src
+
+** Development setup
+
+- Install [[https://www.quicklisp.org/][Quicklisp]]
+- Clone this repository and add it as a local Quicklisp project, for
+  example:
+
+#+begin_src sh
+  git clone git@github.com:ak-coram/cl-duckdb.git ~/Projects/cl-duckdb
+  ln -s ~/Projects/cl-duckdb ~/quicklisp/local-projects/cl-duckdb
+#+end_src
+
+- Start your favored REPL (e.g. sbcl) and load the library using
+  Quicklisp:
+
+#+begin_src lisp
+  (ql:quickload :duckdb)
+#+end_src
+
+*** Running tests
+
+- Load the tests via Quicklisp:
+
+#+begin_src lisp
+  (ql:quickload :duckdb/test)
+#+end_src
+
+- Use [[https://asdf.common-lisp.dev/][ASDF]] or [[https://fiveam.common-lisp.dev/][FiveAM]] to run the tests:
+
+#+begin_src lisp
+  ;; Using ASDF:
+  (asdf:test-system :duckdb)
+  ;; Using FiveAM directly:
+  (fiveam:run! :duckdb)
+#+end_src
+
+*** Running benchmarks
+
+- Load the benchmarks via Quicklisp:
+
+#+begin_src lisp
+  (ql:quickload :duckdb/benchmark)
+#+end_src
+
+- Use [[https://asdf.common-lisp.dev/][ASDF]] or run the benchmarks directly:
+
+#+begin_src lisp
+  ;; Using ASDF:
+  (asdf:test-system :duckdb/benchmark)
+  ;; Running directly:
+  (duckdb/benchmark:run-benchmarks)
+#+end_src
+
 
 ** Legal
 
