@@ -319,6 +319,7 @@ the following values:
 | INTERVAL    | periods:duration             | Microsecond precision                         |
 | UUID        | uuid:uuid                    |                                               |
 | ENUM types  | string                       |                                               |
+| LIST types  | list                         |                                               |
 
 - https://github.com/dlowe-net/local-time
 - https://github.com/enaeher/local-time-duration
