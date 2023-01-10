@@ -50,12 +50,14 @@
   - [X] ENUM
 - [-] Support for querying nested / composite types
   - [X] List
-  - [ ] Struct
+  - [X] Struct
   - [ ] Map
+  - [ ] Union
 - [ ] Support for binding nested / composite types
   - [ ] List
   - [ ] Struct
   - [ ] Map
+  - [ ] Union
 - [X] [[https://duckdb.org/docs/api/c/table_functions][Table functions]]
 - [X] [[https://duckdb.org/docs/api/c/replacement_scans][Replacement scans]]
 - [ ] ...
