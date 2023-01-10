@@ -290,7 +290,7 @@ cleanup."
 
 (defun translate-composite (child-type vector v)
   (destructuring-bind (offset length) v
-    (loop :with child-vector := (duckdb-api::duckdb-list-vector-get-child vector)
+    (loop :with child-vector := (duckdb-api:duckdb-list-vector-get-child vector)
           :with child-validity := (duckdb-api:duckdb-vector-get-validity child-vector)
           :with child-data := (duckdb-api:duckdb-vector-get-data child-vector)
           :with (vector-type internal-type aux) := child-type
