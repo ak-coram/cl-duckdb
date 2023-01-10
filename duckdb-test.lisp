@@ -189,6 +189,25 @@
       (is (equalp '(((1 2 3) (4 5 6)) ((7 8 9) (10 11 12)))
                   (ddb:get-result result 'value 0))))))
 
+(test query-struct
+  (ddb:with-transient-connection
+    (let ((result (ddb:query
+                   (str:concat "SELECT {'x': 1, 'y': 2, 'z': 3} AS value "
+                               "UNION ALL SELECT {'x': 4, 'y': 5, 'z': 6} AS value")
+                   nil)))
+      (is (equalp '(("x" . 1) ("y" . 2) ("z" . 3))
+                  (ddb:get-result result 'value 0))
+          (equalp '(("x" . 4) ("y" . 5) ("z" . 6))
+                  (ddb:get-result result 'value 1))))))
+
+(test query-nested
+  (ddb:with-transient-connection
+    (let ((result (ddb:query
+                   "SELECT [{'i': [1,2,3], 'j': {'k': 'sajt', 'l': NULL}}] AS value"
+                   nil)))
+      (is (equalp '(("value" . #(((("i" 1 2 3) ("j" ("k" . "sajt") ("l")))))))
+                  result)))))
+
 (test bind-null
   (test-query "SELECT ? IS NULL AS a, ? AS b" (nil nil)
       (a b)

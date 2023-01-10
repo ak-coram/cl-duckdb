@@ -295,31 +295,32 @@ the following values:
 
 ** Type & Value conversions
 
-| DuckDB Type | Common Lisp Type             | Note                                          |
-|-------------+------------------------------+-----------------------------------------------|
-| NULL        | null                         | nil (or :null for param. binding)             |
-| BOOLEAN     | boolean                      | t, nil (or :true & :false for param. binding) |
-| VARCHAR     | string                       |                                               |
-| BLOB        | (vector (unsigned-byte 8))   |                                               |
-| REAL        | single-float                 |                                               |
-| DOUBLE      | double-float                 |                                               |
-| DECIMAL     | ratio                        | Max width of 38                               |
-| TINYINT     | integer                      |                                               |
-| UTINYINT    | integer                      |                                               |
-| SMALLINT    | integer                      |                                               |
-| USMALLINT   | integer                      |                                               |
-| INTEGER     | integer                      |                                               |
-| UINTEGER    | integer                      |                                               |
-| BIGINT      | integer                      |                                               |
-| UBIGINT     | integer                      |                                               |
-| HUGEINT     | integer                      |                                               |
-| DATE        | local-time:date              |                                               |
-| TIMESTAMP   | local-time:timestamp         | Microsecond precision                         |
-| TIME        | local-time-duration:duration | Microsecond precision                         |
-| INTERVAL    | periods:duration             | Microsecond precision                         |
-| UUID        | uuid:uuid                    |                                               |
-| ENUM types  | string                       |                                               |
-| LIST types  | list                         |                                               |
+| DuckDB Type  | Common Lisp Type             | Note                                          |
+|--------------+------------------------------+-----------------------------------------------|
+| NULL         | null                         | nil (or :null for param. binding)             |
+| BOOLEAN      | boolean                      | t, nil (or :true & :false for param. binding) |
+| VARCHAR      | string                       |                                               |
+| BLOB         | (vector (unsigned-byte 8))   |                                               |
+| REAL         | single-float                 |                                               |
+| DOUBLE       | double-float                 |                                               |
+| DECIMAL      | ratio                        | Max width of 38                               |
+| TINYINT      | integer                      |                                               |
+| UTINYINT     | integer                      |                                               |
+| SMALLINT     | integer                      |                                               |
+| USMALLINT    | integer                      |                                               |
+| INTEGER      | integer                      |                                               |
+| UINTEGER     | integer                      |                                               |
+| BIGINT       | integer                      |                                               |
+| UBIGINT      | integer                      |                                               |
+| HUGEINT      | integer                      |                                               |
+| DATE         | local-time:date              |                                               |
+| TIMESTAMP    | local-time:timestamp         | Microsecond precision                         |
+| TIME         | local-time-duration:duration | Microsecond precision                         |
+| INTERVAL     | periods:duration             | Microsecond precision                         |
+| UUID         | uuid:uuid                    |                                               |
+| ENUM types   | string                       |                                               |
+| LIST types   | list                         |                                               |
+| STRUCT types | alist                        |                                               |
 
 - https://github.com/dlowe-net/local-time
 - https://github.com/enaeher/local-time-duration

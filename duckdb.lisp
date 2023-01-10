@@ -288,7 +288,9 @@ cleanup."
      ,@cases
      (t v)))
 
-(defun translate-composite (child-type vector v)
+(defgeneric translate-composite (type aux vector v))
+
+(defmethod translate-composite ((type (eql :duckdb-list)) child-type vector v)
   (destructuring-bind (offset length) v
     (loop :with child-vector := (duckdb-api:duckdb-list-vector-get-child vector)
           :with child-validity := (duckdb-api:duckdb-vector-get-validity child-vector)
@@ -297,22 +299,51 @@ cleanup."
           :with vector-ffi-type := (duckdb-api:get-ffi-type (or internal-type
                                                                 vector-type))
           :for i :from offset :below (+ offset length)
-          :for v := (mem-aref child-data vector-ffi-type i)
+          :for v := (unless (eql vector-ffi-type :void)
+                      (mem-aref child-data vector-ffi-type i))
           :collect (when (duckdb-api:duckdb-validity-row-is-valid child-validity i)
                      (translate-value-case
-                      (:duckdb-list (translate-composite aux child-vector v)))))))
+                      (:duckdb-list
+                       (translate-composite vector-type aux child-vector v))
+                      (:duckdb-struct
+                       (translate-composite vector-type aux child-vector i)))))))
+
+(defmethod translate-composite ((type (eql :duckdb-struct)) child-types vector i)
+  (loop :for child-index :from 0
+        :for (name vector-type internal-type aux) :in child-types
+        :for child-vector := (duckdb-api:duckdb-struct-vector-get-child vector
+                                                                        child-index)
+        :for child-validity := (duckdb-api:duckdb-vector-get-validity child-vector)
+        :for child-data := (duckdb-api:duckdb-vector-get-data child-vector)
+        :for vector-ffi-type := (duckdb-api:get-ffi-type (or internal-type
+                                                             vector-type))
+        :for v := (unless (eql vector-ffi-type :void)
+                    (mem-aref child-data vector-ffi-type i))
+        :collect (cons name
+                       (when (duckdb-api:duckdb-validity-row-is-valid child-validity i)
+                         (translate-value-case
+                          (:duckdb-list
+                           (translate-composite vector-type aux child-vector v))
+                          (:duckdb-struct
+                           (translate-composite vector-type aux child-vector 0)))))))
 
 (defun translate-vector (chunk-size vector results)
   (destructuring-bind (vector-type internal-type aux)
       (duckdb-api:get-vector-type vector)
-    (let* ((vector-ffi-type (duckdb-api:get-ffi-type (or internal-type vector-type)))
+    (let* ((vector-ffi-type (duckdb-api:get-ffi-type (or internal-type 
+                                                         vector-type)))
            (p-data (duckdb-api:duckdb-vector-get-data vector))
            (validity (duckdb-api:duckdb-vector-get-validity vector)))
       (loop :for i :below chunk-size
-            :for value := (when (duckdb-api:duckdb-validity-row-is-valid validity i)
-                            (let ((v (mem-aref p-data vector-ffi-type i)))
-                              (translate-value-case
-                               (:duckdb-list (translate-composite aux vector v)))))
+            :for value
+              := (when (duckdb-api:duckdb-validity-row-is-valid validity i)
+                   (let ((v (unless (eql vector-ffi-type :void)
+                              (mem-aref p-data vector-ffi-type i))))
+                     (translate-value-case
+                      (:duckdb-list
+                       (translate-composite vector-type aux vector v))
+                      (:duckdb-struct
+                       (translate-composite vector-type aux vector i)))))
             :do (vector-push-extend value results chunk-size)
             :finally (return vector-type)))))
 

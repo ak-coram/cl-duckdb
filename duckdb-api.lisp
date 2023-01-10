@@ -687,6 +687,10 @@
   (type duckdb-logical-type)
   (index idx))
 
+(defcfun duckdb-struct-vector-get-child duckdb-vector
+  (vector duckdb-vector)
+  (index idx))
+
 (defcfun duckdb-get-int64 :int64
   (value duckdb-value))
 
