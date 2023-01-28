@@ -30,12 +30,12 @@
                           "external_threads" (if bt:*supports-threads-p*
                                                  threads
                                                  0))))
-        (let* (;; prefer duckdb-open-ext over duckdb-open for error message
-               (result (duckdb-api:duckdb-open-ext path
-                                                   p-database
-                                                   config
-                                                   p-error-message)))
-          (if (eq result :duckdb-success)
+        (let (;; prefer duckdb-open-ext over duckdb-open for error message
+              (result (duckdb-api:duckdb-open-ext path
+                                                  p-database
+                                                  config
+                                                  p-error-message)))
+          (if (eql result :duckdb-success)
               (let* ((handle (mem-ref p-database 'duckdb-api:duckdb-database))
                      (pool (when (and bt:*supports-threads-p*
                                       threads
@@ -67,7 +67,7 @@ used by default on ECL if it's built with support for threading.")
 
 (defmacro with-threads (threads &body body)
   `(let ((*threads* ,threads))
-     (progn ,@body)))
+     ,@body))
 
 (defun open-database (&key (path ":memory:") (threads *threads*))
   "Opens and returns database for PATH with \":memory:\" as default.
@@ -111,7 +111,7 @@ The database is closed after BODY is evaluated."
   (with-foreign-object (p-connection 'duckdb-api:duckdb-connection)
     (let ((result (duckdb-api:duckdb-connect (handle database)
                                              p-connection)))
-      (if (eq result :duckdb-success)
+      (if (eql result :duckdb-success)
           (let ((handle (mem-ref p-connection
                                  'duckdb-api:duckdb-connection)))
             (duckdb-api:register-static-table-function handle)
@@ -133,8 +133,7 @@ See DISCONNECT for cleanup."
 
 (defmacro with-open-connection ((connection-var database) &body body)
   `(let ((,connection-var (connect ,database)))
-     (unwind-protect
-          (progn ,@body)
+     (unwind-protect (progn ,@body)
        (disconnect ,connection-var))))
 
 (defvar *connection* nil
@@ -161,18 +160,16 @@ Also see INITIALIZE-DEFAULT-CONNECTION for initializing *CONNECTION*."
   "Connects to DATABASE and dynamically binds *CONNECTION*.
 The connection is disconnected after BODY is evaluated."
   `(let ((*connection* (connect ,database)))
-     (unwind-protect
-          (progn ,@body)
+     (unwind-protect (progn ,@body)
        (disconnect *connection*))))
 
 (defmacro with-transient-connection (&body body)
   "Connects to new in-memory database and dynamically binds *CONNECTION*.
 The connection and the database are cleaned up after BODY is evaluated."
   (alexandria:with-gensyms (database)
-    `(let* ((,database (open-database)))
-       (unwind-protect
-            (with-default-connection (,database)
-              (progn ,@body))
+    `(let ((,database (open-database)))
+       (unwind-protect (with-default-connection (,database)
+                         ,@body)
          (close-database ,database)))))
 
 ;;; Statements
@@ -192,7 +189,7 @@ The connection and the database are cleaned up after BODY is evaluated."
                                                 p-statement))
              (statement (mem-ref p-statement
                                  'duckdb-api:duckdb-prepared-statement)))
-        (if (eq result :duckdb-success)
+        (if (eql result :duckdb-success)
             (let* ((parameter-count (duckdb-api:duckdb-nparams statement))
                    (parameter-types
                      (loop :for i :from 1 :to parameter-count
@@ -219,8 +216,7 @@ The connection and the database are cleaned up after BODY is evaluated."
   `(let ((,statement-var (prepare ,query
                                   ,@(when connection
                                       `(:connection ,connection)))))
-     (unwind-protect
-          (progn ,@body)
+     (unwind-protect (progn ,@body)
        (destroy-statement ,statement-var))))
 
 ;;; Queries
@@ -242,9 +238,9 @@ DESTROY-RESULT must be called on the returned value for resource
 cleanup."
   (let ((connection (connection statement))
         (p-result (foreign-alloc '(:struct duckdb-api:duckdb-result))))
-    (if (eq (duckdb-api:duckdb-execute-prepared (handle statement)
-                                                p-result)
-            :duckdb-success)
+    (if (eql (duckdb-api:duckdb-execute-prepared (handle statement)
+                                                 p-result)
+             :duckdb-success)
         (make-result connection statement p-result)
         (let ((error-message (duckdb-api:duckdb-result-error p-result)))
           (duckdb-api:duckdb-destroy-result p-result)
@@ -257,9 +253,9 @@ cleanup."
 (defun perform (statement)
   "Same as EXECUTE, but doesn't return any results and needs no cleanup."
   (with-foreign-object (p-result '(:struct duckdb-api:duckdb-result))
-    (if (eq (duckdb-api:duckdb-execute-prepared (handle statement)
-                                                p-result)
-            :duckdb-success)
+    (if (eql (duckdb-api:duckdb-execute-prepared (handle statement)
+                                                 p-result)
+             :duckdb-success)
         (duckdb-api:duckdb-destroy-result p-result)
         (let ((error-message (duckdb-api:duckdb-result-error p-result)))
           (duckdb-api:duckdb-destroy-result p-result)
@@ -275,8 +271,7 @@ cleanup."
 
 (defmacro with-execute ((result-var statement) &body body)
   `(let ((,result-var (execute ,statement)))
-     (unwind-protect
-          (progn ,@body)
+     (unwind-protect (progn ,@body)
        (destroy-result ,result-var))))
 
 (defmacro translate-value-case (&rest cases)
@@ -585,9 +580,9 @@ binding a bit more concise. It is not intended for any other use."
                      (apply #'cl-spark:vspark (cadr values) :labels (car values)
                             vspark-args)
                      (apply #'cl-spark:vspark values vspark-args))))
-    (if stream
-        (prog () (princ vspark stream))
-        vspark)))
+    (cond
+      (stream (princ vspark stream) nil)
+      (t vspark))))
 
 ;;; Appenders
 
@@ -633,7 +628,7 @@ binding a bit more concise. It is not intended for any other use."
                                                                p-table
                                                                p-appender))
                     (appender (mem-ref p-appender 'duckdb-api:duckdb-appender)))
-               (if (eq result :duckdb-success)
+               (if (eql result :duckdb-success)
                    (let ((column-types (or types (get-column-types connection
                                                                    table))))
                      (make-instance 'appender
@@ -746,11 +741,10 @@ intentionally."
   (alexandria:with-gensyms (table-id)
     `(let ((,table-id (duckdb-api:add-table-reference
                        (duckdb-api:make-static-columns ,columns))))
-       (unwind-protect
-            (let ((duckdb-api:*static-table-bindings*
-                    (cons (cons ,table-name ,table-id)
-                          duckdb-api:*static-table-bindings*)))
-              (progn ,@body))
+       (unwind-protect (let ((duckdb-api:*static-table-bindings*
+                               (acons ,table-name ,table-id
+                                      duckdb-api:*static-table-bindings*)))
+                         ,@body)
          (duckdb-api:clear-table-reference ,table-id)))))
 
 (defmacro with-static-tables (((table-name columns) &rest more-clauses)
