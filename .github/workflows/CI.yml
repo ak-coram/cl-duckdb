@@ -17,7 +17,7 @@ jobs:
       matrix:
         lisp: [sbcl-bin, ccl-bin/1.12.1, ecl/21.2.1]
         os: [ubuntu-latest, windows-latest, macos-latest]
-        duckdb: [0.7.0]
+        duckdb: [0.7.1]
         cffi: [default, static]
         exclude:
           - os: windows-latest
