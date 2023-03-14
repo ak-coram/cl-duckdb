@@ -31,6 +31,8 @@ jobs:
             cffi: static
           - lisp: ccl-bin/1.12.1
             cffi: static
+          - lisp: ecl/21.2.1
+            quicklisp-dist: quicklisp
     env:
       LISP: ${{ matrix.lisp }}
       DUCKDB_VERSION: ${{ matrix.duckdb }}
