@@ -31,6 +31,9 @@ jobs:
       - name: Setup Lisp
         continue-on-error: true
         uses: 40ants/setup-lisp@v2
+        with:
+          qlfile-template: |
+            dist ultralisp http://dist.ultralisp.org
 
       - name: Run benchmarks
         shell: bash
