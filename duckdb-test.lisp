@@ -200,12 +200,30 @@
           (equalp '(("x" . 4) ("y" . 5) ("z" . 6))
                   (ddb:get-result result 'value 1))))))
 
+(test query-map
+  (ddb:with-transient-connection
+    (let ((result (ddb:query
+                   (str:concat "SELECT map([1, 2, 3], ['a', 'b', 'c']) AS value "
+                               "UNION ALL SELECT map([4, 5], ['d', 'e']) AS value")
+                   nil)))
+      (is (equalp '((1 . "a") (2 . "b") (3 . "c"))
+                  (ddb:get-result result 'value 0))
+          (equalp '((4 . "e") (5 . "d"))
+                  (ddb:get-result result 'value 1))))))
+
 (test query-nested
   (ddb:with-transient-connection
     (let ((result (ddb:query
-                   "SELECT [{'i': [1,2,3], 'j': {'k': 'sajt', 'l': NULL}}] AS value"
+                   (str:concat "SELECT [{'i': [1,2,3], "
+                               "'j': {'k': 'sajt', 'l': NULL, 'm': "
+                               "map([1, 2, 3], ['a', 'b', 'c'])"
+                               "}}] AS value")
                    nil)))
-      (is (equalp '(("value" . #(((("i" 1 2 3) ("j" ("k" . "sajt") ("l")))))))
+      (is (equalp '(("value" . #(((("i" 1 2 3)
+                                   ("j" ("k" . "sajt") ("l")
+                                    ("m" . ((1 . "a")
+                                            (2 . "b")
+                                            (3 . "c")))))))))
                   result)))))
 
 (test bind-null

@@ -298,7 +298,7 @@ cleanup."
                       (mem-aref child-data vector-ffi-type i))
           :collect (when (duckdb-api:duckdb-validity-row-is-valid child-validity i)
                      (translate-value-case
-                      (:duckdb-list
+                      ((:duckdb-list :duckdb-map)
                        (translate-composite vector-type aux child-vector v))
                       (:duckdb-struct
                        (translate-composite vector-type aux child-vector i)))))))
@@ -317,10 +317,22 @@ cleanup."
         :collect (cons name
                        (when (duckdb-api:duckdb-validity-row-is-valid child-validity i)
                          (translate-value-case
-                          (:duckdb-list
+                          ((:duckdb-list :duckdb-map)
                            (translate-composite vector-type aux child-vector v))
                           (:duckdb-struct
                            (translate-composite vector-type aux child-vector 0)))))))
+
+(defmethod translate-composite ((type (eql :duckdb-map)) child-types vector v)
+  (loop :with entries
+          := (translate-composite
+              :duckdb-list `(:duckdb-struct nil ((k . ,(car child-types))
+                                                 (v . ,(cadr child-types))))
+              vector
+              v)
+        :for entry :in entries
+        :for key := (alexandria:assoc-value entry 'k)
+        :for value := (alexandria:assoc-value entry 'v)
+        :collect (cons key value)))
 
 (defun translate-vector (chunk-size vector results)
   (destructuring-bind (vector-type internal-type aux)
@@ -335,7 +347,7 @@ cleanup."
                    (let ((v (unless (eql vector-ffi-type :void)
                               (mem-aref p-data vector-ffi-type i))))
                      (translate-value-case
-                      (:duckdb-list
+                      ((:duckdb-list :duckdb-map)
                        (translate-composite vector-type aux vector v))
                       (:duckdb-struct
                        (translate-composite vector-type aux vector i)))))

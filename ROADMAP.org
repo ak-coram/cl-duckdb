@@ -51,7 +51,7 @@
 - [-] Support for querying nested / composite types
   - [X] List
   - [X] Struct
-  - [ ] Map
+  - [X] Map
   - [ ] Union
 - [ ] Support for binding nested / composite types
   - [ ] List

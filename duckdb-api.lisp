@@ -230,7 +230,7 @@
     (:duckdb-uuid '(:struct duckdb-uuid))
     (:duckdb-list '(:struct duckdb-list))
     (:duckdb-struct :void)
-    (:duckdb-map :void)))
+    (:duckdb-map '(:struct duckdb-list))))
 
 (defcstruct duckdb-column)
 
