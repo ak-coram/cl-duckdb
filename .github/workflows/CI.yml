@@ -20,7 +20,7 @@ jobs:
         quicklisp-dist:
           - quicklisp
           - ultralisp
-        duckdb: [0.7.1]
+        duckdb: [0.8.0]
         cffi: [default, static]
         exclude:
           - os: windows-latest
