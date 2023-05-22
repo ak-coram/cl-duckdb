@@ -60,8 +60,8 @@ Please note that the API is experimental and subject to changes.
    ;; DDB:INITIALIZE-DEFAULT-CONNECTION is recommended for REPL sessions
    (ddb:with-transient-connection
      ;; Create a new range table containing integers
-     (ddb::run "CREATE TABLE range (i INTEGER PRIMARY KEY)"
-               "CREATE SEQUENCE seq_range_i START 1")
+     (ddb:run "CREATE TABLE range (i INTEGER PRIMARY KEY)"
+              "CREATE SEQUENCE seq_range_i START 1")
 
      ;; Use a prepared statement to populate the table with a 1000 values
      (ddb:with-statement (statement "INSERT INTO range VALUES (nextval('seq_range_i'))")
