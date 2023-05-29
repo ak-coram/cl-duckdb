@@ -112,6 +112,7 @@
   (:use #:cl #:cffi)
   (:export #:*connection*
            #:*threads*
+           #:*default-thread-count*
            #:with-threads
            #:open-database
            #:close-database

@@ -62,12 +62,17 @@ N is larger than one and the implementation supports threads, a thread
 pool of size N-1 is created and used for parallel query execution. The
 thread pool is shut down when the database is closed.
 
-T: See above, but the number of CPUs is used to determine N. This is
+T: See above, but the DuckDB defaults are used to determine N. This is
 used by default on ECL if it's built with support for threading.")
 
 (defmacro with-threads (threads &body body)
   `(let ((*threads* ,threads))
      ,@body))
+
+(defvar *default-thread-count* nil
+  "This value will be initialized using a temporary in-memory connection
+to DuckDB with internal thread-management to retrieve the default
+value.")
 
 (defun open-database (&key (path ":memory:") (threads *threads*))
   "Opens and returns database for PATH with \":memory:\" as default.
@@ -77,10 +82,10 @@ for THREADS."
   (make-instance 'database
                  :path path
                  :threads
-                 (when threads
+                 (when (and *default-thread-count* threads)
                    (1- (etypecase threads
                          ((integer 1) threads)
-                         (boolean (serapeum:count-cpus :online t)))))))
+                         (boolean *default-thread-count*))))))
 
 (defun close-database (database)
   "Does resource cleanup for DATABASE, also see OPEN-DATABASE."
@@ -807,3 +812,12 @@ intentionally."
                           ,@(when connection
                               `(:connection ,one-conn)))
            (perform ,finish-statement))))))
+
+;; Initialize the default number of threads based on DuckDB defaults
+(unless *default-thread-count*
+  (with-open-database (db :threads nil)
+    (with-default-connection (db)
+      (setf *default-thread-count*
+            (get-result (query "SELECT current_setting('threads') AS thread_count"
+                               nil)
+                        'thread-count 0)))))

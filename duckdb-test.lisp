@@ -11,12 +11,13 @@
   (let ((query (str:concat "SELECT current_setting('threads') AS n"
                            " UNION ALL "
                            "SELECT current_setting('external_threads') AS n"))
-        (cpu-count (serapeum:count-cpus :online t)))
+        (default-thread-count ddb:*default-thread-count*))
     (labels ((get-thread-counts ()
                (ddb:get-result (ddb:query query nil) 'n)))
       (ddb:with-threads nil
         (ddb:with-transient-connection
-          (is (equalp (get-thread-counts) (vector cpu-count 0)))))
+          (is (equalp (get-thread-counts)
+                      (vector default-thread-count 0)))))
       (ddb:with-threads 1
         (ddb:with-transient-connection
           (is (equalp (get-thread-counts) (vector 1 0)))))
@@ -30,7 +31,7 @@
         (ddb:with-transient-connection
           (is (equalp (get-thread-counts)
                       (if bt:*supports-threads-p*
-                          (vector 1 (1- cpu-count))
+                          (vector 1 (1- default-thread-count))
                           (vector 1 0)))))))))
 
 (defmacro test-query (query parameters result-syms &body body)
