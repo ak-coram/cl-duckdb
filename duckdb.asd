@@ -12,11 +12,11 @@
                          #:cffi-libffi)
                #:cl-ascii-table
                #:cl-spark
+               #:let-plus
                #:local-time
                #:local-time-duration
                #:periods
                #:str
-               #:serapeum
                #:uuid
                #:uiop)
   :components ((:file "duckdb-ecl-sffi")

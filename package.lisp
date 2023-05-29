@@ -1,7 +1,7 @@
 ;;;; package.lisp
 
 (defpackage #:duckdb-api
-  (:use #:cl #:cffi)
+  (:use #:cl #:cffi #:let-plus)
   (:export #:get-message
            #:get-ffi-type
            #:duckdb-result
