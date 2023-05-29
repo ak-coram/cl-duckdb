@@ -26,16 +26,16 @@
 (define-benchmark measure-integer-insert ()
   (declare (optimize speed))
   (dotimes (_ 10)
+    (declare (type fixnum _))
     (with-benchmark-sampling
       (ddb:with-transient-connection
         (create-integers-table)
-        (ddb:run "BEGIN TRANSACTION")
-        (ddb:with-statement (statement "INSERT INTO integers (i) VALUES (?)")
-          (loop :for i fixnum :below *integer-operations*
-                :for params := (list i)
-                :do (ddb:bind-parameters statement params)
-                :do (ddb:perform statement)))
-        (ddb:run "COMMIT")))))
+        (ddb:with-transaction ()
+          (ddb:with-statement (statement "INSERT INTO integers (i) VALUES (?)")
+            (loop :for i fixnum :below *integer-operations*
+                  :for params := (list i)
+                  :do (ddb:bind-parameters statement params)
+                  :do (ddb:perform statement))))))))
 
 (define-benchmark measure-integer-append ()
   (declare (optimize speed))

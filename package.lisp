@@ -145,4 +145,5 @@
            #:with-static-tables
            #:bind-static-table
            #:unbind-static-table
-           #:clear-static-tables))
+           #:clear-static-tables
+           #:with-transaction))

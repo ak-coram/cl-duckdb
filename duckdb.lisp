@@ -779,3 +779,31 @@ intentionally."
 (defun clear-static-tables ()
   (duckdb-api:clear-global-table-references)
   nil)
+
+(defmacro with-transaction
+    ((&key connection)
+     &body body)
+  (alexandria:with-gensyms (begin-statement
+                            finish-statement
+                            success
+                            one-conn)
+    `(let ((,success nil)
+           ,@(when connection
+               `((,one-conn ,connection))))
+       (with-statement (,begin-statement "BEGIN TRANSACTION"
+                        ,@(when connection
+                            `(:connection ,one-conn)))
+         (perform ,begin-statement))
+       (unwind-protect
+            (restart-case (multiple-value-prog1 (progn ,@body)
+                            (setf ,success t))
+              (commit-transaction ()
+                :report "Continue with COMMIT."
+                (setf ,success t))
+              (rollback-transaction ()
+                :report "Continue with ROLLBACK."
+                nil))
+         (with-statement (,finish-statement (if ,success "COMMIT" "ROLLBACK")
+                          ,@(when connection
+                              `(:connection ,one-conn)))
+           (perform ,finish-statement))))))
