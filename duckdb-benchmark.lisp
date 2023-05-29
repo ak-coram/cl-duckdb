@@ -29,11 +29,13 @@
     (with-benchmark-sampling
       (ddb:with-transient-connection
         (create-integers-table)
+        (ddb:run "BEGIN TRANSACTION")
         (ddb:with-statement (statement "INSERT INTO integers (i) VALUES (?)")
           (loop :for i fixnum :below *integer-operations*
                 :for params := (list i)
                 :do (ddb:bind-parameters statement params)
-                :do (ddb:perform statement)))))))
+                :do (ddb:perform statement)))
+        (ddb:run "COMMIT")))))
 
 (define-benchmark measure-integer-append ()
   (declare (optimize speed))
