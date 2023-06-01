@@ -17,7 +17,7 @@
                #:local-time-duration
                #:periods
                #:str
-               #:uuid
+               #:frugal-uuid
                #:uiop)
   :components ((:file "duckdb-ecl-sffi")
                (:file "package")

@@ -107,7 +107,7 @@
                           "FROM (SELECT gen_random_uuid() AS uuid)")
       nil
       (a b)
-    (is (uuid:uuid= a (uuid:make-uuid-from-string b)))))
+    (is (fuuid:uuid= a (fuuid:from-string b)))))
 
 (test query-decimal
   (test-query (str:concat "SELECT 3.141::DECIMAL(4,3) AS a"
@@ -332,9 +332,9 @@
       (is (local-time:timestamp= a now)))))
 
 (test bind-uuid
-  (let ((uuid (uuid:make-v4-uuid)))
+  (let ((uuid (fuuid:make-v4)))
     (test-query "SELECT ?::uuid AS a" (uuid) (a)
-      (is (uuid:uuid= a uuid)))))
+      (is (fuuid:uuid= a uuid)))))
 
 (test bind-time
   (let ((d (local-time-duration:duration
@@ -431,7 +431,7 @@
     :test local-time:timestamp=))
 
 (test append-uuid
-  (test-append "uuid" (list (uuid:make-v4-uuid)) :test uuid:uuid=))
+  (test-append "uuid" (list (fuuid:make-v4)) :test fuuid:uuid=))
 
 (test append-time
   (let ((d (local-time-duration:duration
@@ -528,7 +528,9 @@
                                'scope 0))
              (get-columns (value)
                `(("scope" . ((,value) :duckdb-varchar)))))
-      (let ((table-name (str:snake-case (format nil "test_~a" (uuid:make-v4-uuid)))))
+      (let ((table-name (str:snake-case
+                         (format nil "test_~s"
+                                 (fuuid:to-string (fuuid:make-v4))))))
         (ddb:bind-static-table table-name (get-columns "global1"))
         (is (string= "global1" (get-scope table-name)))
         (ddb:with-static-table (table-name (get-columns "inner"))

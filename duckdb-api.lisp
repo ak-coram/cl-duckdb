@@ -77,17 +77,11 @@
 (defmethod translate-from-foreign (value (type duckdb-uuid-type))
   (with-foreign-slots ((lower upper) value (:struct duckdb-uuid))
     (let ((upper (logxor upper (ash 1 63))))
-      ;; (format nil "~(~8,'0x-~4,'0x-~4,'0x-~4,'0x-~12,'0x~)"
-      ;;             (ldb (byte 32 32) upper)
-      ;;             (ldb (byte 16 16) upper)
-      ;;             (ldb (byte 16 0) upper)
-      ;;             (ldb (byte 16 48) lower)
-      ;;             (ldb (byte 48 0) lower))
-      (make-instance 'uuid:uuid
+      (make-instance 'fuuid:uuid
                      :time-low (ldb (byte 32 32) upper)
                      :time-mid (ldb (byte 16 16) upper)
-                     :time-high (ldb (byte 16 0) upper)
-                     :clock-seq-var (ldb (byte 8 56) lower)
+                     :time-hi-and-version (ldb (byte 16 0) upper)
+                     :clock-seq-hi-and-res (ldb (byte 8 56) lower)
                      :clock-seq-low (ldb (byte 8 48) lower)
                      :node (ldb (byte 48 0) lower)))))
 

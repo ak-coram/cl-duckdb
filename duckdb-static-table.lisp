@@ -28,7 +28,7 @@
   (clrhash *global-static-tablespace*))
 
 (defun add-table-reference (columns)
-  (let ((table-id (format nil "~a" (uuid:make-v4-uuid))))
+  (let ((table-id (fuuid:to-string (fuuid:make-v4))))
     (setf (gethash table-id *static-tablespace*)
           columns)
     table-id))

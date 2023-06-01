@@ -473,8 +473,8 @@ binding a bit more concise. It is not intended for any other use."
              (duckdb-api:duckdb-bind-timestamp statement-handle i value))
             (:duckdb-time local-time-duration:duration
              (duckdb-api:duckdb-bind-time statement-handle i value))
-            (:duckdb-uuid uuid:uuid
-             (let ((s (uuid:print-bytes nil value)))
+            (:duckdb-uuid fuuid:uuid
+             (let ((s (fuuid:to-string value)))
                (duckdb-api:duckdb-bind-varchar statement-handle i s))))))
     `(case duckdb-type
        ,@(loop :for (type _ binding-form) :in parameter-binding-types
@@ -723,7 +723,7 @@ intentionally."
             (:duckdb-date (duckdb-api:duckdb-append-date handle value))
             (:duckdb-timestamp (duckdb-api:duckdb-append-timestamp handle value))
             (:duckdb-time (duckdb-api:duckdb-append-time handle value))
-            (:duckdb-uuid (let ((s (uuid:print-bytes nil value)))
+            (:duckdb-uuid (let ((s (fuuid:to-string value)))
                             (duckdb-api:duckdb-append-varchar handle s))))))
     `(ecase duckdb-type
        ,@(loop :for (type append-form) :in appender-types

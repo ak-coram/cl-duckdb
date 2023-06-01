@@ -317,7 +317,7 @@ the following values:
 | TIMESTAMP    | local-time:timestamp         | Microsecond precision                         |
 | TIME         | local-time-duration:duration | Microsecond precision                         |
 | INTERVAL     | periods:duration             | Microsecond precision                         |
-| UUID         | uuid:uuid                    |                                               |
+| UUID         | frugal-uuid:uuid             |                                               |
 | ENUM types   | string                       |                                               |
 | LIST types   | list                         |                                               |
 | STRUCT types | alist                        |                                               |
@@ -325,7 +325,7 @@ the following values:
 - https://github.com/dlowe-net/local-time
 - https://github.com/enaeher/local-time-duration
 - https://github.com/jwiegley/periods
-- https://github.com/dardoria/uuid
+- https://github.com/ak-coram/cl-frugal-uuid
 
 *** NIL as boolean FALSE vs NIL as NULL
 

@@ -18,7 +18,6 @@ jobs:
         lisp: [sbcl-bin, ccl-bin/1.12.1, ecl/21.2.1]
         os: [ubuntu-latest, windows-latest, macos-latest]
         quicklisp-dist:
-          - quicklisp
           - ultralisp
         duckdb: [0.8.0]
         cffi: [default, static]
