@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         os: [FreeBSD]
-        lisp: [sbcl-bin, ecl/21.2.1]
+        lisp: [ecl/21.2.1]
         cffi: [default, static]
         exclude:
           - lisp: sbcl-bin
