@@ -74,6 +74,10 @@ used by default on ECL if it's built with support for threading.")
 to DuckDB with internal thread-management to retrieve the default
 value.")
 
+(defvar *sql-null-return-value* nil
+  "This value will be returned for SQL NULL values in query
+results. Defaults to NIL.")
+
 (defun open-database (&key (path ":memory:") (threads *threads*))
   "Opens and returns database for PATH with \":memory:\" as default.
 
@@ -288,9 +292,11 @@ cleanup."
      ,@cases
      (t v)))
 
-(defgeneric translate-composite (type aux vector v))
+(defgeneric translate-composite
+    (type aux vector v &optional sql-null-return-value))
 
-(defmethod translate-composite ((type (eql :duckdb-list)) child-type vector v)
+(defmethod translate-composite ((type (eql :duckdb-list)) child-type vector v
+                                &optional sql-null-return-value)
   (destructuring-bind (offset length) v
     (loop :with child-vector := (duckdb-api:duckdb-list-vector-get-child vector)
           :with child-validity := (duckdb-api:duckdb-vector-get-validity child-vector)
@@ -301,14 +307,18 @@ cleanup."
           :for i :from offset :below (+ offset length)
           :for v := (unless (eql vector-ffi-type :void)
                       (mem-aref child-data vector-ffi-type i))
-          :collect (when (duckdb-api:duckdb-validity-row-is-valid child-validity i)
-                     (translate-value-case
-                      ((:duckdb-list :duckdb-map)
-                       (translate-composite vector-type aux child-vector v))
-                      (:duckdb-struct
-                       (translate-composite vector-type aux child-vector i)))))))
+          :collect (if (duckdb-api:duckdb-validity-row-is-valid child-validity i)
+                       (translate-value-case
+                        ((:duckdb-list :duckdb-map)
+                         (translate-composite vector-type aux child-vector v
+                                              sql-null-return-value))
+                        (:duckdb-struct
+                         (translate-composite vector-type aux child-vector i
+                                              sql-null-return-value)))
+                       sql-null-return-value))))
 
-(defmethod translate-composite ((type (eql :duckdb-struct)) child-types vector i)
+(defmethod translate-composite ((type (eql :duckdb-struct)) child-types vector i
+                                &optional sql-null-return-value)
   (loop :for child-index :from 0
         :for (name vector-type internal-type aux) :in child-types
         :for child-vector := (duckdb-api:duckdb-struct-vector-get-child vector
@@ -320,26 +330,32 @@ cleanup."
         :for v := (unless (eql vector-ffi-type :void)
                     (mem-aref child-data vector-ffi-type i))
         :collect (cons name
-                       (when (duckdb-api:duckdb-validity-row-is-valid child-validity i)
-                         (translate-value-case
-                          ((:duckdb-list :duckdb-map)
-                           (translate-composite vector-type aux child-vector v))
-                          (:duckdb-struct
-                           (translate-composite vector-type aux child-vector 0)))))))
+                       (if (duckdb-api:duckdb-validity-row-is-valid child-validity i)
+                           (translate-value-case
+                            ((:duckdb-list :duckdb-map)
+                             (translate-composite vector-type aux child-vector v
+                                                  sql-null-return-value))
+                            (:duckdb-struct
+                             (translate-composite vector-type aux child-vector 0
+                                                  sql-null-return-value)))
+                           sql-null-return-value))))
 
-(defmethod translate-composite ((type (eql :duckdb-map)) child-types vector v)
+(defmethod translate-composite ((type (eql :duckdb-map)) child-types vector v
+                                &optional sql-null-return-value)
   (loop :with entries
           := (translate-composite
               :duckdb-list `(:duckdb-struct nil ((k . ,(car child-types))
                                                  (v . ,(cadr child-types))))
               vector
-              v)
+              v
+              sql-null-return-value)
         :for entry :in entries
         :for key := (alexandria:assoc-value entry 'k)
         :for value := (alexandria:assoc-value entry 'v)
         :collect (cons key value)))
 
-(defun translate-vector (chunk-size vector results)
+(defun translate-vector
+    (chunk-size vector results &optional sql-null-return-value)
   (destructuring-bind (vector-type internal-type aux)
       (duckdb-api:get-vector-type vector)
     (let* ((vector-ffi-type (duckdb-api:get-ffi-type (or internal-type 
@@ -348,28 +364,32 @@ cleanup."
            (validity (duckdb-api:duckdb-vector-get-validity vector)))
       (loop :for i :below chunk-size
             :for value
-              := (when (duckdb-api:duckdb-validity-row-is-valid validity i)
-                   (let ((v (unless (eql vector-ffi-type :void)
-                              (mem-aref p-data vector-ffi-type i))))
-                     (translate-value-case
-                      ((:duckdb-list :duckdb-map)
-                       (translate-composite vector-type aux vector v))
-                      (:duckdb-struct
-                       (translate-composite vector-type aux vector i)))))
+              := (if (duckdb-api:duckdb-validity-row-is-valid validity i)
+                     (let ((v (unless (eql vector-ffi-type :void)
+                                (mem-aref p-data vector-ffi-type i))))
+                       (translate-value-case
+                        ((:duckdb-list :duckdb-map)
+                         (translate-composite vector-type aux vector v
+                                              sql-null-return-value))
+                        (:duckdb-struct
+                         (translate-composite vector-type aux vector i
+                                              sql-null-return-value))))
+                     sql-null-return-value)
             :do (vector-push-extend value results chunk-size)
             :finally (return vector-type)))))
 
-(defun translate-chunk (result-alist chunk)
+(defun translate-chunk (result-alist chunk &optional sql-null-return-value)
   (let ((column-count (duckdb-api:duckdb-data-chunk-get-column-count chunk))
         (chunk-size (duckdb-api:duckdb-data-chunk-get-size chunk)))
     (values
      (loop :for column-index :below column-count
            :for entry :in result-alist
            :for vector := (duckdb-api:duckdb-data-chunk-get-vector chunk column-index)
-           :collect (translate-vector chunk-size vector (cdr entry)))
+           :collect (translate-vector chunk-size vector (cdr entry)
+                                      sql-null-return-value))
      chunk-size)))
 
-(defun translate-result (result)
+(defun translate-result (result &optional sql-null-return-value)
   (let* ((p-result (handle result))
          (chunk-count (duckdb-api:result-chunk-count p-result))
          (column-count (duckdb-api:duckdb-column-count p-result))
@@ -382,7 +402,9 @@ cleanup."
            (loop :for chunk-index :below chunk-count
                  :sum (duckdb-api:with-data-chunk (chunk p-result chunk-index)
                         (multiple-value-bind (types chunk-size)
-                            (translate-chunk result-alist chunk)
+                            (translate-chunk result-alist
+                                             chunk
+                                             sql-null-return-value)
                           (setf column-types types)
                           chunk-size)))))
     (values result-alist column-types row-count)))
@@ -512,15 +534,21 @@ binding a bit more concise. It is not intended for any other use."
       :for duckdb-type :in parameter-types
       :do (generate-parameter-binding-dispatch))))
 
-(defun internal-query (query parameters &key (connection *connection*))
+(defun internal-query
+    (connection sql-null-return-value query parameters)
   (with-statement (statement query :connection connection)
     (when parameters
       (bind-parameters statement parameters))
     (with-execute (result statement)
-      (translate-result result))))
+      (translate-result result sql-null-return-value))))
 
-(defun query (query parameters &key (connection *connection*))
-  (nth-value 0 (internal-query query parameters :connection connection)))
+(defun query (query parameters
+              &key (connection *connection*)
+                (sql-null-return-value *sql-null-return-value*))
+  (nth-value 0 (internal-query connection
+                               sql-null-return-value
+                               query
+                               parameters)))
 
 (defun run (&rest queries)
   (loop :for q :in queries
@@ -544,11 +572,14 @@ binding a bit more concise. It is not intended for any other use."
           result-values))))
 
 (defun format-query (query parameters
-                     &key (connection *connection*) (stream *standard-output*))
+                     &key (connection *connection*)
+                       (sql-null-return-value *sql-null-return-value*)
+                       (stream *standard-output*))
   (multiple-value-bind (results types row-count)
-      (internal-query query
-                      parameters
-                      :connection connection)
+      (internal-query connection
+                      sql-null-return-value
+                      query
+                      parameters)
     (declare (ignore types))
     (let* ((columns (mapcar #'car results))
            (table (ascii-table:make-table

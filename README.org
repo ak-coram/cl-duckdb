@@ -327,7 +327,7 @@ the following values:
 - https://github.com/jwiegley/periods
 - https://github.com/ak-coram/cl-frugal-uuid
 
-*** NIL as boolean FALSE vs NIL as NULL
+*** NIL as boolean FALSE vs NIL as NULL / custom return value for SQL NULL
 
 #+begin_src lisp
   (ddb:initialize-default-connection)
@@ -376,6 +376,24 @@ the following values:
   ;; a parameter value, it is equivalent to using T:
 
   (ddb:query "SELECT ? = ? AS x" '(:true t)) ; => (("x" . #(T)))
+#+end_src
+
+Alternatively the default return value for SQL NULL can be customized:
+
+#+begin_src lisp
+  (ddb:initialize-default-connection)
+  ;; => #<DUCKDB::CONNECTION {10042C24C3}>
+
+  ;; NIL is used by default
+  (ddb:query "SELECT ? AS x" '(:null)) ; => (("x" . #(NIL)))
+
+  ;; Represent SQL NULL values as :NULL in the result for only one call
+  (ddb:query "SELECT ? AS x" '(:null)
+             :sql-null-return-value :null) ; => (("x" . #(:NULL)))
+
+  ;; Change the default value
+  (setf ddb:*sql-null-return-value* :null) ; => :NULL
+  (ddb:query "SELECT ? AS x" '(:null)) ; => (("x" . #(:NULL)))
 #+end_src
 
 ** Development setup
