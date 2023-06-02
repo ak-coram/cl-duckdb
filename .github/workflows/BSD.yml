@@ -41,8 +41,9 @@ jobs:
             export PATH=/usr/local/bin/:$PATH
             ros install ${{ matrix.lisp }}
             ros install neil-lindquist/ci-utils
-          run: |
             ros use ${{ matrix.lisp }}
+            ros run --eval '(progn (ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil) (uiop:quit))'
+          run: |
             ln -s $(pwd) ~/.roswell/local-projects/cl-duckdb
             if [ ${{ matrix.cffi }} = 'static' ]; then export CL_DUCKDB_USE_SFFI=t; fi
             ~/.roswell/bin/run-fiveam -e t -l duckdb/test :duckdb
