@@ -38,7 +38,8 @@
   (alexandria:with-gensyms (db conn results)
     `(ddb:with-open-database (,db)
        (ddb:with-open-connection (,conn ,db)
-         (let* ((,results (ddb:query ,query (list ,@parameters) :connection ,conn))
+         (let* ((,results (ddb:query ,query (list ,@parameters) :connection ,conn
+                                     :sql-null-return-value nil))
                 ,@(loop :for sym :in result-syms
                         :collect `(,sym (ddb:get-result ,results (quote ,sym) 0))))
            ,@body)))))
@@ -219,7 +220,8 @@
                                "'j': {'k': 'sajt', 'l': NULL, 'm': "
                                "map([1, 2, 3], ['a', 'b', 'c'])"
                                "}}] AS value")
-                   nil)))
+                   nil
+                   :sql-null-return-value nil)))
       (is (equalp '(("value" . #(((("i" 1 2 3)
                                    ("j" ("k" . "sajt") ("l")
                                     ("m" . ((1 . "a")
@@ -356,7 +358,8 @@
          (ddb:with-appender (,appender "test")
            (loop :for ,value :in ,values
                  :do (ddb:append-row ,appender (list ,value))))
-         (let* ((,results (ddb:query "SELECT x FROM test" nil)))
+         (let* ((,results (ddb:query "SELECT x FROM test" nil
+                                     :sql-null-return-value nil)))
            (loop :for ,x :across (ddb:get-result ,results 'x)
                  :for ,y :in ,values
                  :do (let ((,x (if ,convert (funcall ,convert ,x) ,x))
