@@ -8,7 +8,7 @@
 (in-suite :duckdb)
 
 (test thread-setup
-  (let ((query (str:concat "SELECT current_setting('threads') AS n"
+  (let ((query (ddb:concat "SELECT current_setting('threads') AS n"
                            " UNION ALL "
                            "SELECT current_setting('external_threads') AS n"))
         (default-thread-count ddb:*default-thread-count*))
@@ -51,7 +51,7 @@
 
 (test query-non-ascii-string
   (let ((s "Árvíztűrő tükörfúrógép"))
-    (test-query (str:concat "SELECT '" s "' AS a, LENGTH('" s "') AS b") nil
+    (test-query (ddb:concat "SELECT '" s "' AS a, LENGTH('" s "') AS b") nil
         (a b)
       (is (string= s a))
       (is (eql (length s) b)))))
@@ -64,7 +64,7 @@
 
 (test query-integers
   (test-query
-      (str:concat "SELECT "
+      (ddb:concat "SELECT "
                   " -18446744073709551629::hugeint AS hugeint"
                   ", -12::tinyint AS tinyint"
                   ", -123::smallint AS smallint"
@@ -89,7 +89,7 @@
     (is (eql 12345 ubigint))))
 
 (test query-floats
-  (test-query (str:concat "SELECT 3.14::float AS float"
+  (test-query (ddb:concat "SELECT 3.14::float AS float"
                           ", 2.71::double AS double")
       nil
       (float double)
@@ -99,19 +99,19 @@
 (test query-blob
   (let ((s "바람 부는 대로, 물결 치는 대로"))
     (test-query
-        (str:concat "SELECT ENCODE('" s "') AS blob") nil
+        (ddb:concat "SELECT ENCODE('" s "') AS blob") nil
         (blob)
       (is (string= s (babel:octets-to-string blob))))))
 
 (test query-uuid
-  (test-query (str:concat "SELECT uuid AS a, uuid::text AS b "
+  (test-query (ddb:concat "SELECT uuid AS a, uuid::text AS b "
                           "FROM (SELECT gen_random_uuid() AS uuid)")
       nil
       (a b)
     (is (fuuid:uuid= a (fuuid:from-string b)))))
 
 (test query-decimal
-  (test-query (str:concat "SELECT 3.141::DECIMAL(4,3) AS a"
+  (test-query (ddb:concat "SELECT 3.141::DECIMAL(4,3) AS a"
                           ", 3.14159265::DECIMAL(9,8) AS b"
                           ", 3.14159265358979323::DECIMAL(18,17) AS c"
                           ", 3.1415926535897932384626433832795028841::DECIMAL(38,37) AS d")
@@ -125,7 +125,7 @@
              d))))
 
 (test query-date
-  (test-query (str:concat "SELECT '1970-01-01'::date AS a"
+  (test-query (ddb:concat "SELECT '1970-01-01'::date AS a"
                           ", '2243-10-17'::date AS b")
       nil
       (a b)
@@ -137,7 +137,7 @@
          b))))
 
 (test query-timestamp
-  (test-query (str:concat "SELECT '1970-01-01 23:59:59'::timestamp AS a"
+  (test-query (ddb:concat "SELECT '1970-01-01 23:59:59'::timestamp AS a"
                           ", '2243-10-16 23:59:59'::timestamp AS b")
       nil
       (a b)
@@ -149,7 +149,7 @@
          b))))
 
 (test query-interval
-  (test-query (str:concat "SELECT t.i AS interval, epoch_ms(0) + t.i AS ts "
+  (test-query (ddb:concat "SELECT t.i AS interval, epoch_ms(0) + t.i AS ts "
                           "FROM (SELECT INTERVAL 1001 YEAR "
                           "+ INTERVAL 1001 MONTH "
                           "+ INTERVAL 1001 DAY "
@@ -166,7 +166,7 @@
          ts))))
 
 (test query-time
-  (test-query (str:concat "SELECT t.time AS d "
+  (test-query (ddb:concat "SELECT t.time AS d "
                           ", extract('hour' FROM t.time) AS hour "
                           ", extract('minute' FROM t.time) AS minute "
                           ", extract('microsecond' FROM t.time) AS microsecond "
@@ -194,7 +194,7 @@
 (test query-struct
   (ddb:with-transient-connection
     (let ((result (ddb:query
-                   (str:concat "SELECT {'x': 1, 'y': 2, 'z': 3} AS value "
+                   (ddb:concat "SELECT {'x': 1, 'y': 2, 'z': 3} AS value "
                                "UNION ALL SELECT {'x': 4, 'y': 5, 'z': 6} AS value")
                    nil)))
       (is (equalp '(("x" . 1) ("y" . 2) ("z" . 3))
@@ -205,7 +205,7 @@
 (test query-map
   (ddb:with-transient-connection
     (let ((result (ddb:query
-                   (str:concat "SELECT map([1, 2, 3], ['a', 'b', 'c']) AS value "
+                   (ddb:concat "SELECT map([1, 2, 3], ['a', 'b', 'c']) AS value "
                                "UNION ALL SELECT map([4, 5], ['d', 'e']) AS value")
                    nil)))
       (is (equalp '((1 . "a") (2 . "b") (3 . "c"))
@@ -216,7 +216,7 @@
 (test query-nested
   (ddb:with-transient-connection
     (let ((result (ddb:query
-                   (str:concat "SELECT [{'i': [1,2,3], "
+                   (ddb:concat "SELECT [{'i': [1,2,3], "
                                "'j': {'k': 'sajt', 'l': NULL, 'm': "
                                "map([1, 2, 3], ['a', 'b', 'c'])"
                                "}}] AS value")
@@ -248,7 +248,7 @@
     (is-true b)))
 
 (test bind-boolean-keyword
-  (test-query (str:concat "SELECT ?::boolean || '' AS a "
+  (test-query (ddb:concat "SELECT ?::boolean || '' AS a "
                           ", ?::boolean || '' AS b")
       (:false :true)
       (a b)
@@ -257,7 +257,7 @@
 
 (test bind-integers
   (test-query
-      (str:concat "SELECT ?::hugeint AS minhugeint"
+      (ddb:concat "SELECT ?::hugeint AS minhugeint"
                   ", ?::hugeint AS maxhugeint"
                   ", ?::tinyint AS tinyint"
                   ", ?::utinyint AS utinyint"
@@ -288,7 +288,7 @@
 
 (test bind-string
   (let ((s "Árvíztűrő tükörfúrógép"))
-    (test-query (str:concat "SELECT t.s AS a, LENGTH(t.s) AS b "
+    (test-query (ddb:concat "SELECT t.s AS a, LENGTH(t.s) AS b "
                             "FROM (SELECT ?::text AS s) AS t")
         (s)
         (a b)
@@ -297,7 +297,7 @@
 
 (test bind-blob
   (let ((s "Árvíztűrő tükörfúrógép"))
-    (test-query (str:concat "SELECT decode(?::blob) AS a")
+    (test-query (ddb:concat "SELECT decode(?::blob) AS a")
         ((babel:string-to-octets s))
         (a)
       (is (string= a s)))))
@@ -305,7 +305,7 @@
 (test bind-floats
   (let ((f 3.14s0)
         (d 2.71d0))
-    (test-query (str:concat "SELECT ?::float AS float"
+    (test-query (ddb:concat "SELECT ?::float AS float"
                             ", ?::double AS double")
         (f d)
         (float double)
@@ -313,7 +313,7 @@
       (is (eql d double)))))
 
 (test bind-decimal
-  (test-query (str:concat "SELECT ?::DECIMAL(38,38) AS a"
+  (test-query (ddb:concat "SELECT ?::DECIMAL(38,38) AS a"
                           ", ?::DECIMAL(7,6) AS b")
       (1/3 355/113)
       (a b)
@@ -323,14 +323,14 @@
 
 (test bind-date
   (let ((today (local-time:today)))
-    (test-query (str:concat "SELECT ?::date AS a")
+    (test-query (ddb:concat "SELECT ?::date AS a")
         (today)
         (a)
       (is (local-time:timestamp= a today)))))
 
 (test bind-timestamp
   (let ((now (local-time:now)))
-    (test-query (str:concat "SELECT ?::timestamp AS a") (now) (a)
+    (test-query (ddb:concat "SELECT ?::timestamp AS a") (now) (a)
       (is (local-time:timestamp= a now)))))
 
 (test bind-uuid
@@ -354,7 +354,7 @@
   (alexandria:once-only (values convert)
     (alexandria:with-gensyms (appender value results x y)
       `(ddb:with-transient-connection
-         (ddb:run ,(str:concat "CREATE TABLE test (x " sql-type ")"))
+         (ddb:run ,(ddb:concat "CREATE TABLE test (x " sql-type ")"))
          (ddb:with-appender (,appender "test")
            (loop :for ,value :in ,values
                  :do (ddb:append-row ,appender (list ,value))))
@@ -385,7 +385,7 @@
             :do (loop :for y :in booleans
                       :do (loop :for z :in booleans
                                 :do (ddb:append-row appender (list x y z))))))
-    (let* ((query (str:concat "SELECT COUNT(*) AS count FROM "
+    (let* ((query (ddb:concat "SELECT COUNT(*) AS count FROM "
                               "(SELECT DISTINCT x, y, z FROM booleans) AS b"))
            (results (ddb:query query nil)))
       (is (eql 8 (ddb:get-result results 'count 0))))))
@@ -458,7 +458,7 @@
                       ("b" . ((t nil :null :false t t)
                               :duckdb-boolean))))
       (let ((r1 (ddb:query "SELECT COUNT(*) AS count FROM booleans GROUP BY a" nil))
-            (r2 (ddb:query (str:concat "SELECT COUNT(*) AS count FROM booleans "
+            (r2 (ddb:query (ddb:concat "SELECT COUNT(*) AS count FROM booleans "
                                        "GROUP BY b ORDER BY COUNT(b) ASC")
                            nil)))
         (is (equalp (ddb:get-result r1 'count) #(3 3)))
@@ -531,8 +531,8 @@
                                'scope 0))
              (get-columns (value)
                `(("scope" . ((,value) :duckdb-varchar)))))
-      (let ((table-name (str:snake-case
-                         (format nil "test_~s"
+      (let ((table-name (format nil "test_~a"
+                                (ddb:param-case-to-snake-case
                                  (fuuid:to-string (fuuid:make-v4))))))
         (ddb:bind-static-table table-name (get-columns "global1"))
         (is (string= "global1" (get-scope table-name)))

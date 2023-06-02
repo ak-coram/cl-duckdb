@@ -559,13 +559,13 @@ binding a bit more concise. It is not intended for any other use."
                       (perform statement))))
 
 (defun get-result (results column &optional n)
-  (labels ((compare (a b) (string= a (str:param-case b))))
+  (labels ((compare (a b) (string= a (snake-case-to-param-case b))))
     (let ((result-values (if (stringp column)
                              (alexandria:assoc-value results
                                                      column
                                                      :test #'string=)
                              (alexandria:assoc-value results
-                                                     (str:downcase column)
+                                                     (string-downcase column)
                                                      :test #'compare))))
       (if n
           (aref result-values n)
@@ -644,24 +644,24 @@ binding a bit more concise. It is not intended for any other use."
 
 (defun quote-identifier (s)
   (let* ((double-quote "\"")
-         (escaped-double-quote (str:concat double-quote double-quote)))
-    (str:concat double-quote
-                (str:replace-all double-quote escaped-double-quote s)
-                double-quote)))
+         (escaped-double-quote (concat double-quote double-quote)))
+    (concat double-quote
+            (replace-substring double-quote escaped-double-quote s)
+            double-quote)))
 
 (defun get-column-types (connection table)
   "Try to automatically determine the column types for appending to a table"
-  (labels ((wrap-parens (s) (str:concat " (" s ") ")))
+  (labels ((wrap-parens (s) (concat " (" s ") ")))
     (let* ((table-id (quote-identifier table))
            (columns (map 'list #'identity
-                         (get-result (query (str:concat "DESCRIBE " table-id)
+                         (get-result (query (concat "DESCRIBE " table-id)
                                             nil :connection connection)
                                      'column-name)))
-           (column-ids (str:join ", " (mapcar #'quote-identifier columns)))
-           (params (str:join ", " (make-list (length columns)
-                                             :initial-element "?")))
-           (query (str:concat "INSERT INTO " table-id (wrap-parens column-ids)
-                              "VALUES " (wrap-parens params))))
+           (column-ids (join ", " (mapcar #'quote-identifier columns)))
+           (params (join ", " (make-list (length columns)
+                                         :initial-element "?")))
+           (query (concat "INSERT INTO " table-id (wrap-parens column-ids)
+                          "VALUES " (wrap-parens params))))
       (with-statement (statement query :connection connection)
         (parameter-types statement)))))
 

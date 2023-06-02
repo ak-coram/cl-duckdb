@@ -55,11 +55,11 @@
     (ddb:with-appender (appender "integers")
       (loop :for i fixnum :below 500
             :do (ddb:append-row appender (list i))))
-    (loop :with test-query := (str:concat "SELECT i1.i FROM integers AS i1 "
+    (loop :with test-query := (ddb:concat "SELECT i1.i FROM integers AS i1 "
                                           "JOIN integers AS i2 ON true")
           :for i fixnum :below 10
           :do (with-benchmark-sampling
-                  (ddb:query test-query nil)))))
+                (ddb:query test-query nil)))))
 
 (defparameter *integer-sum-limit* 200000)
 

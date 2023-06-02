@@ -148,4 +148,8 @@
            #:bind-static-table
            #:unbind-static-table
            #:clear-static-tables
-           #:with-transaction))
+           #:with-transaction
+           #:concat
+           #:join
+           #:snake-case-to-param-case
+           #:param-case-to-snake-case))

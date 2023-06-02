@@ -12,15 +12,16 @@
                          #:cffi-libffi)
                #:cl-ascii-table
                #:cl-spark
+               #:cl-ppcre
                #:let-plus
                #:local-time
                #:local-time-duration
                #:periods
-               #:str
                #:frugal-uuid
                #:uiop)
   :components ((:file "duckdb-ecl-sffi")
                (:file "package")
+               (:file "duckdb-misc")
                (:file "duckdb-api")
                (:file "duckdb-static-table")
                (:file "duckdb"))

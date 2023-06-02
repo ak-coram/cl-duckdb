@@ -56,27 +56,28 @@ distribution:
 Please note that the API is experimental and subject to changes.
 
 #+begin_src lisp
-   ;; Use an in-memory transient database,
-   ;; DDB:INITIALIZE-DEFAULT-CONNECTION is recommended for REPL sessions
-   (ddb:with-transient-connection
-     ;; Create a new range table containing integers
-     (ddb:run "CREATE TABLE range (i INTEGER PRIMARY KEY)"
-              "CREATE SEQUENCE seq_range_i START 1")
+  ;; Use an in-memory transient database,
+  ;; DDB:INITIALIZE-DEFAULT-CONNECTION is recommended for REPL sessions
+  (ddb:with-transient-connection
+    ;; Create a new range table containing integers
+    (ddb:run "CREATE TABLE range (i INTEGER PRIMARY KEY)"
+             "CREATE SEQUENCE seq_range_i START 1")
 
-     ;; Use a prepared statement to populate the table with a 1000 values
-     (ddb:with-statement (statement "INSERT INTO range VALUES (nextval('seq_range_i'))")
-       (dotimes (_ 1000) (ddb:perform statement)))
+    ;; Use a prepared statement to populate the table with a 1000 values
+    (ddb:with-statement (statement "INSERT INTO range VALUES (nextval('seq_range_i'))")
+      (dotimes (_ 1000) (ddb:perform statement)))
 
-     ;; Solve Project Euler Problem 9
-     (let* ((euler9-query (str:concat "SELECT a.i * b.i * c.i AS solution "
-                                      "FROM range AS c "
-                                      "JOIN range AS b ON b.i < c.i "
-                                      "JOIN range AS a ON a.i < b.i "
-                                      "WHERE a.i + b.i + c.i = ? "
-                                      "AND a.i * a.i + b.i * b.i = c.i * c.i"))
-            (parameters '(1000))
-            (results (ddb:query euler9-query parameters)))
-       (format t "PE9 Solution: ~a~%" (ddb:get-result results 'solution 0))))
+    ;; Solve Project Euler Problem 9
+
+    (let* ((euler9-query (ddb:concat "SELECT a.i * b.i * c.i AS solution "
+                                     "FROM range AS c "
+                                     "JOIN range AS b ON b.i < c.i "
+                                     "JOIN range AS a ON a.i < b.i "
+                                     "WHERE a.i + b.i + c.i = ? "
+                                     "AND a.i * a.i + b.i * b.i = c.i * c.i"))
+           (parameters '(1000))
+           (results (ddb:query euler9-query parameters)))
+      (format t "PE9 Solution: ~a~%" (ddb:get-result results 'solution 0))))
 #+end_src
 
 *** Sparks
@@ -228,7 +229,7 @@ the following values:
                                                       :if (evenp i) :collect i
                                                         :else :collect nil)
                                                :duckdb-integer))))
-    (ddb:query (str:concat "SELECT sum(i) AS sum "
+    (ddb:query (ddb:concat "SELECT sum(i) AS sum "
                            ", COUNT(i) AS not_null_count "
                            "FROM integers")
                nil)) ; => (("sum" . #(249500)) ("not_null_count" . #(500)))
@@ -240,12 +241,12 @@ the following values:
 
   ;; If another table with the same name exists, you can use the
   ;; static_table table function directly:
-  (ddb:run (str:concat "CREATE TABLE polysemy (\"That you have but slumbered here, "
+  (ddb:run (ddb:concat "CREATE TABLE polysemy (\"That you have but slumbered here, "
                        "While these visions did appear\" VARCHAR)"))
   (ddb:with-static-table
       ("polysemy" `(("If we shadows have offended, Think but this, and all is mended:"
                      . (() :duckdb-varchar))))
-    (ddb:query (str:concat "SELECT A.*, B.* FROM static_table('polysemy') AS A "
+    (ddb:query (ddb:concat "SELECT A.*, B.* FROM static_table('polysemy') AS A "
                            "JOIN polysemy AS B ON true")
                nil))
   ;; => (("If we shadows have offended, Think but this, and all is mended:" . #())
