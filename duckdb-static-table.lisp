@@ -12,7 +12,8 @@
    (values :initarg :values :accessor static-column-values)
    (value-count :initarg :value-count :accessor static-column-value-count)
    (length :initarg :length :accessor static-column-length)
-   (type :initarg :type :accessor static-column-type)))
+   (type :initarg :type :accessor static-column-type)
+   (is-specialized :initarg :is-specialized :accessor static-column-specialized-p)))
 
 (defun get-global-table-columns (table-name)
   (gethash table-name *global-static-tablespace*))
@@ -69,7 +70,8 @@
                    :type (or column-type (static-vector-type values))
                    :values values
                    :value-count value-count
-                   :length column-length)))
+                   :length column-length
+                   :is-specialized (null column-type))))
 
 (defun make-static-columns (columns)
   (loop :for (column-name . column) :in columns
@@ -136,7 +138,7 @@
       (duckdb-init-set-error info
                              (format nil "static_table init - ~a" c)))))
 
-(defmacro copy-static-vector ()
+(defmacro copy-static-specialized-vector ()
   `(ecase duckdb-type
      ,@(loop :for (cl-type duckdb-type) :in (static-table-column-types)
              :for is-boolean := (eql duckdb-type :duckdb-boolean)
@@ -155,7 +157,7 @@
                                  (aref vector k))
                        :finally (return i)))))))
 
-(defmacro copy-static-list ()
+(defmacro copy-static-values (is-vector)
   `(ecase duckdb-type
      ,@(loop
          :for (_ duckdb-type) :in (cons '(nil :duckdb-varchar)
@@ -169,7 +171,10 @@
                         (duckdb-vector-ensure-validity-writable vector)
                         (duckdb-vector-get-validity vector))
                  :for i fixnum :below vector-size
-                 :for v :in (nthcdr index values)
+                 ,@(if is-vector
+                       '(:for offset fixnum :from index :below data-length
+                         :for v := (aref values offset))
+                       '(:for v :in (nthcdr index values)))
                  :for is-null := (or (and ,(not is-boolean)
                                           (null v))
                                      (eql v :null))
@@ -222,9 +227,12 @@
                            :for vector := (duckdb-data-chunk-get-vector output column-index)
                            :for data-length := (static-column-value-count column)
                            :for data-ptr := (duckdb-vector-get-data vector)
-                           :maximize (if (listp values)
-                                         (copy-static-list)
-                                         (copy-static-vector)))))
+                           :for is-specialized := (static-column-specialized-p column)
+                           :maximize (if is-specialized
+                                         (copy-static-specialized-vector)
+                                         (if (vectorp values)
+                                             (copy-static-values t)
+                                             (copy-static-values nil))))))
               (setf index (+ n index))
               (duckdb-data-chunk-set-size output n)))))
     (error (c)

@@ -166,7 +166,7 @@ each column should have the same length. Tables using Lisp data
 structures are not bound to a single connection and work across
 different ones.
 
-**** Vectors
+**** Specialized vectors
 
 | Common Lisp type   | DuckDB Type |
 |--------------------+-------------|
@@ -182,10 +182,10 @@ different ones.
 | single-float       | REAL        |
 | double-float       | DOUBLE      |
 
-**** Lists
+**** Lists & unspecialized vectors
 
-List columns need to specify the DuckDB column type and can contain
-the following values:
+List columns or unspecialized vectors need to specify the DuckDB
+column type and can contain the following values:
 
 - Booleans (nil, t, :false, :true, :null)
 - Integers in range of the corresponding column type (HUGEINT columns
