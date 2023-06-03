@@ -160,10 +160,19 @@
                           "+ INTERVAL 1001 MICROSECOND AS i) AS t")
       nil
       (interval ts)
-    (is (local-time:timestamp=
-         (periods:add-time (local-time:unix-to-timestamp 0)
-                           interval)
-         ts))))
+    (let ((p (periods:duration :years 1084
+                               :months 5
+                               :days 1001
+                               :hours 1017
+                               :minutes 57
+                               :seconds 42
+                               :milliseconds 2
+                               :microseconds 1
+                               :nanoseconds 0))
+          (epoch (local-time:unix-to-timestamp 0)))
+      (is (local-time:timestamp=
+           (periods:add-time epoch (periods:subtract-duration p interval))
+           epoch)))))
 
 (test query-time
   (test-query (ddb:concat "SELECT t.time AS d "
