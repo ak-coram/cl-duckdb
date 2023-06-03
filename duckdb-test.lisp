@@ -160,6 +160,9 @@
                           "+ INTERVAL 1001 MICROSECOND AS i) AS t")
       nil
       (interval ts)
+    (format t "~%~%debug_interval: ~A ~%~% debug_ts: ~A ~%~% debug_add: ~A ~%~%"
+            interval ts (periods:add-time (local-time:unix-to-timestamp 0)
+                                          interval))
     (is (local-time:timestamp=
          (periods:add-time (local-time:unix-to-timestamp 0)
                            interval)

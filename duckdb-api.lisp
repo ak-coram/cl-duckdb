@@ -145,6 +145,7 @@
 
 (defmethod translate-from-foreign (value (type duckdb-interval-type))
   (with-foreign-slots ((months days micros) value (:struct duckdb-interval))
+    (format t "~%~% debug_translate: ~A ~A ~A ~%~%" months days micros)
     (let+ (((&values years months) (floor months 12))
            ((&values milliseconds microseconds) (floor micros 1000))
            ((&values seconds milliseconds) (floor milliseconds 1000))
