@@ -544,11 +544,19 @@ binding a bit more concise. It is not intended for any other use."
 
 (defun query (query parameters
               &key (connection *connection*)
-                (sql-null-return-value *sql-null-return-value*))
-  (nth-value 0 (internal-query connection
-                               sql-null-return-value
-                               query
-                               parameters)))
+                (sql-null-return-value *sql-null-return-value*)
+                include-column-types)
+  (multiple-value-bind (result-alist column-types row-count)
+      (internal-query connection
+                      sql-null-return-value
+                      query
+                      parameters)
+    (declare (ignore row-count))
+    (if include-column-types
+        (loop :for (k . v) :in result-alist
+              :for column-type :in column-types
+              :collect (cons k (list v column-type)))
+        result-alist)))
 
 (defun run (&rest queries)
   (loop :for q :in queries
@@ -560,13 +568,16 @@ binding a bit more concise. It is not intended for any other use."
 
 (defun get-result (results column &optional n)
   (labels ((compare (a b) (string= a (snake-case-to-param-case b))))
-    (let ((result-values (if (stringp column)
-                             (alexandria:assoc-value results
-                                                     column
-                                                     :test #'string=)
-                             (alexandria:assoc-value results
-                                                     (string-downcase column)
-                                                     :test #'compare))))
+    (let* ((column-data (if (stringp column)
+                            (alexandria:assoc-value results
+                                                    column
+                                                    :test #'string=)
+                            (alexandria:assoc-value results
+                                                    (string-downcase column)
+                                                    :test #'compare)))
+           (result-values (if (listp column-data)
+                              (car column-data)
+                              column-data)))
       (if n
           (aref result-values n)
           result-values))))
