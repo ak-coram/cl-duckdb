@@ -911,7 +911,7 @@
   (let* ((task-state (duckdb-create-task-state database))
          (worker-threads
            (loop :for i :below n
-                 :collect (bt:make-thread
+                 :collect (bt2:make-thread
                            (lambda ()
                              (duckdb-execute-tasks-state task-state))
                            :name (format nil "DuckDB worker thread #~a" i)))))
@@ -923,7 +923,7 @@
           (worker-threads (worker-threads pool)))
       (duckdb-finish-execution task-state)
       (loop :for worker-thread :in worker-threads
-            :when (bt:thread-alive-p worker-thread)
-              :do (bt:join-thread worker-thread)
+            :when (bt2:thread-alive-p worker-thread)
+              :do (bt2:join-thread worker-thread)
             :finally (duckdb-destroy-task-state task-state)))))
 

@@ -27,9 +27,8 @@
       (duckdb-api:with-config
           (config (when threads
                     (list "threads" 1
-                          "external_threads" (if bt:*supports-threads-p*
-                                                 threads
-                                                 0))))
+                          "external_threads" #+bordeaux-threads threads
+                                             #-bordeaux-threads 0)))
         (let (;; prefer duckdb-open-ext over duckdb-open for error message
               (result (duckdb-api:duckdb-open-ext path
                                                   p-database
@@ -37,7 +36,8 @@
                                                   p-error-message)))
           (if (eql result :duckdb-success)
               (let* ((handle (mem-ref p-database 'duckdb-api:duckdb-database))
-                     (pool (when (and bt:*supports-threads-p*
+                     (pool (when (and #+bordeaux-threads t
+                                      #-bordeaux-threads nil
                                       threads
                                       (plusp threads))
                              (duckdb-api:start-worker-pool handle threads))))
@@ -51,7 +51,7 @@
 
 (defvar *threads*
   #-ECL nil
-  #+ECL bt:*supports-threads-p*
+  #+ECL (progn #+bordeaux-threads t #-bordeaux-threads 1)
   "Default value for the number of threads when opening a new database.
 
 NIL: DuckDB internal thread management is used. Use SQL pragmas to

@@ -24,15 +24,13 @@
       (ddb:with-threads 2
         (ddb:with-transient-connection
           (is (equalp (get-thread-counts)
-                      (if bt:*supports-threads-p*
-                          (vector 1 1)
-                          (vector 1 0))))))
+                      #+bordeaux-threads (vector 1 1)
+                      #-bordeaux-threads (vector 1 0)))))
       (ddb:with-threads t
         (ddb:with-transient-connection
           (is (equalp (get-thread-counts)
-                      (if bt:*supports-threads-p*
-                          (vector 1 (1- default-thread-count))
-                          (vector 1 0)))))))))
+                      #+bordeaux-threads (vector 1 (1- default-thread-count))
+                      #-bordeaux-threads (vector 1 0))))))))
 
 (defmacro test-query (query parameters result-syms &body body)
   (alexandria:with-gensyms (db conn results)
