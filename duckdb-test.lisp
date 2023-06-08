@@ -147,17 +147,16 @@
          b))))
 
 (test query-interval
-  (test-query (ddb:concat "SELECT t.i AS interval, epoch_ms(0) + t.i AS ts "
-                          "FROM (SELECT INTERVAL 1001 YEAR "
+  (test-query (ddb:concat "SELECT INTERVAL 1001 YEAR "
                           "+ INTERVAL 1001 MONTH "
                           "+ INTERVAL 1001 DAY "
                           "+ INTERVAL 1001 HOUR "
                           "+ INTERVAL 1001 MINUTE "
                           "+ INTERVAL 1001 SECOND "
                           "+ INTERVAL 1001 MILLISECOND "
-                          "+ INTERVAL 1001 MICROSECOND AS i) AS t")
+                          "+ INTERVAL 1001 MICROSECOND AS interval")
       nil
-      (interval ts)
+      (interval)
     (let ((p (periods:duration :years 1084
                                :months 5
                                :days 1001
@@ -550,3 +549,15 @@
             (is (string= "innermost" (get-scope table-name)))))
         (is (string= "global2" (get-scope table-name)))
         (ddb:unbind-static-table table-name)))))
+
+(test static-table-custom-type-dispatch-
+  (ddb:with-transient-connection
+    (let ((duckdb-api:*static-table-type-map*
+            `(((simple-array fixnum) . :duckdb-bigint)))
+          (column (make-array '(2) :element-type 'fixnum
+                                   :initial-contents (list most-negative-fixnum
+                                                           most-positive-fixnum))))
+      (ddb:with-static-table ("my_table" `(("my_column" . ,column)))
+        (is (equalp column
+                    (ddb:get-result (ddb:query "SELECT * FROM my_table" nil)
+                                    'my-column)))))))
