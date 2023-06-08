@@ -142,6 +142,38 @@ via [[https://github.com/tkych/cl-spark][cl-spark]]:
   ;; => NIL
 #+end_src
 
+*** Writing queries via SxQL
+
+If you want to use a syntax based on s-expressions for your queries,
+then the SxQL library is an option:
+
+#+begin_src lisp
+  (ddb:initialize-default-connection)
+
+  ;; Load SxQL
+  (ql:quickload :sxql)
+  (use-package :sxql)
+
+  ;; Create a table
+  (ddb:run (yield (create-table :numbers
+                    ((i :type 'integer
+                        :primary-key t)))))
+
+  ;; Define utility function
+  (defun query-sxql (q) (multiple-value-call #'ddb:query (yield q)))
+
+  ;; Populate table with values
+  (loop :for x :below 100
+        :do (query-sxql (insert-into :numbers (set= :i x))))
+
+  (query-sxql (select ((:as (:sum :i) :sum))
+                (from :numbers)
+                (where (:even :i))))
+  ;; => (("sum" . #(4950)))
+#+end_src
+
+Please refer to the [[https://github.com/fukamachi/sxql][SxQL documentation]] for more examples.
+
 *** Appenders
 
 [[https://duckdb.org/docs/data/appender][Appenders]] are one of the ways of loading bulk data into DuckDB. They append rows to a single table of a database:
