@@ -2,6 +2,22 @@
 
 (in-package #:duckdb)
 
+(defmacro with-all-float-traps-masked (&rest body)
+  #-ECL `(float-features:with-float-traps-masked (:underflow
+                                                  :overflow
+                                                  :inexact
+                                                  :invalid
+                                                  :divide-by-zero
+                                                  :denormalized-operand)
+           ,@body)
+  #+ECL
+  (alexandria:with-gensyms (previous)
+    `(let ((,previous (ext:trap-fpe 'last nil)))
+       (unwind-protect (progn
+                         (ext:trap-fpe t nil)
+                         ,@body)
+         (ext:trap-fpe ,previous t)))))
+
 (define-condition duckdb-error (simple-error)
   ((database :initarg :database)
    (statement :initarg :statement)
@@ -536,11 +552,12 @@ binding a bit more concise. It is not intended for any other use."
 
 (defun internal-query
     (connection sql-null-return-value query parameters)
-  (with-statement (statement query :connection connection)
-    (when parameters
-      (bind-parameters statement parameters))
-    (with-execute (result statement)
-      (translate-result result sql-null-return-value))))
+  (with-all-float-traps-masked
+      (with-statement (statement query :connection connection)
+        (when parameters
+          (bind-parameters statement parameters))
+        (with-execute (result statement)
+          (translate-result result sql-null-return-value)))))
 
 (defun query (query parameters
               &key (connection *connection*)
@@ -559,12 +576,13 @@ binding a bit more concise. It is not intended for any other use."
         result-alist)))
 
 (defun run (&rest queries)
-  (loop :for q :in queries
-        :if (stringp q) :do (with-statement (statement q)
-                              (perform statement))
-          :else :do (with-statement (statement (car q))
-                      (bind-parameters statement (cadr q))
-                      (perform statement))))
+  (with-all-float-traps-masked
+      (loop :for q :in queries
+            :if (stringp q) :do (with-statement (statement q)
+                                  (perform statement))
+              :else :do (with-statement (statement (car q))
+                          (bind-parameters statement (cadr q))
+                          (perform statement)))))
 
 (defun get-result (results column &optional n)
   (labels ((compare (a b) (string= a (snake-case-to-param-case b))))

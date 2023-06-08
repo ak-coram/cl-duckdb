@@ -18,6 +18,7 @@
                #:local-time-duration
                #:periods
                #:frugal-uuid
+               #:float-features
                #:uiop)
   :components ((:file "duckdb-ecl-sffi")
                (:file "package")
