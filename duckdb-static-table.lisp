@@ -2,10 +2,14 @@
 
 (in-package :duckdb-api)
 
-(defparameter *global-static-tablespace* (make-hash-table :test 'equal))
+(defvar *static-table-type-map* nil
+  "Can be bound to an alist mapping CL types to DuckDB type keywords for
+automatically inferring column types in static tables.")
 
-(defparameter *static-table-bindings* nil)
-(defparameter *static-tablespace* (make-hash-table :test 'equal))
+(defvar *global-static-tablespace* (make-hash-table :test 'equal))
+
+(defvar *static-table-bindings* nil)
+(defvar *static-tablespace* (make-hash-table :test 'equal))
 
 (defclass static-column ()
   ((name :initarg :name :accessor static-column-name)
@@ -58,20 +62,36 @@
       ((simple-array double-float) :duckdb-double))))
 
 (defmacro static-vector-type (vector)
-  `(etypecase ,vector
-     ,@(static-table-column-types)))
+  (alexandria:with-gensyms (specialized-type
+                            unspecialized-type
+                            type)
+    `(let ((,specialized-type (typecase ,vector
+                                ,@(static-table-column-types))))
+       (if ,specialized-type
+           (values ,specialized-type t)
+           (let* ((,type (type-of ,vector))
+                  (,unspecialized-type
+                    (alexandria:assoc-value *static-table-type-map*
+                                            ,type
+                                            :test #'subtypep)))
+             (if ,unspecialized-type
+                 (values ,unspecialized-type nil)
+                 (error (format nil "unable to infer column type for ~A"
+                                ,type))))))))
 
 (defun make-static-column (name values column-type &key length)
-  (let* ((value-count (length values))
+  (let+ ((value-count (length values))
          (column-length (or length
-                            value-count)))
+                            value-count))
+         ((&values type is-specialized) (or (values column-type nil)
+                                            (static-vector-type values))))
     (make-instance 'static-column
                    :name name
-                   :type (or column-type (static-vector-type values))
+                   :type type
                    :values values
                    :value-count value-count
                    :length column-length
-                   :is-specialized (null column-type))))
+                   :is-specialized is-specialized)))
 
 (defun make-static-columns (columns)
   (loop :for (column-name . column) :in columns

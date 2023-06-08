@@ -93,6 +93,7 @@
            #:duckdb-append-date
            #:duckdb-append-timestamp
            #:duckdb-append-time
+           #:*static-table-type-map*
            #:*static-table-bindings*
            #:make-static-columns
            #:add-global-table-reference
