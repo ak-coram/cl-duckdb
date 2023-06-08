@@ -149,6 +149,7 @@
            #:bind-static-table
            #:unbind-static-table
            #:clear-static-tables
+           #:with-static-table-type-map
            #:with-transaction
            #:concat
            #:join

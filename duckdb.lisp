@@ -845,6 +845,10 @@ intentionally."
   (duckdb-api:clear-global-table-references)
   nil)
 
+(defmacro with-static-table-type-map (type-alist &rest body)
+  `(let ((duckdb-api:*static-table-type-map* ,type-alist))
+     ,@body))
+
 (defmacro with-transaction
     ((&key connection)
      &body body)

@@ -552,12 +552,11 @@
 
 (test static-table-custom-type-dispatch-
   (ddb:with-transient-connection
-    (let ((duckdb-api:*static-table-type-map*
-            `(((simple-array fixnum) . :duckdb-bigint)))
-          (column (make-array '(2) :element-type 'fixnum
+    (let ((column (make-array '(2) :element-type 'fixnum
                                    :initial-contents (list most-negative-fixnum
                                                            most-positive-fixnum))))
-      (ddb:with-static-table ("my_table" `(("my_column" . ,column)))
-        (is (equalp column
-                    (ddb:get-result (ddb:query "SELECT * FROM my_table" nil)
-                                    'my-column)))))))
+      (ddb:with-static-table-type-map `(((simple-array fixnum) . :duckdb-bigint))
+        (ddb:with-static-table ("my_table" `(("my_column" . ,column)))
+          (is (equalp column
+                      (ddb:get-result (ddb:query "SELECT * FROM my_table" nil)
+                                      'my-column))))))))
