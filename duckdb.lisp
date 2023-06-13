@@ -575,6 +575,16 @@ binding a bit more concise. It is not intended for any other use."
               :collect (cons k (list v column-type)))
         result-alist)))
 
+(defun q (query &rest parameters)
+  "Query more conveniently from the REPL.
+
+Relies on transient connection when no default connection is
+available. See QUERY for more generic usage."
+  (if *connection*
+      (query query parameters)
+      (with-transient-connection
+        (query query parameters))))
+
 (defun run (&rest queries)
   (with-all-float-traps-masked
       (loop :for q :in queries
@@ -619,6 +629,16 @@ binding a bit more concise. It is not intended for any other use."
                  (loop :for column :in columns
                        :collect (get-result results column i))))
       (ascii-table:display table stream))))
+
+(defun fq (query &rest parameters)
+  "Format query more conveniently from the REPL.
+
+Relies on transient connection when no default connection is
+available. See FORMAT-QUERY for more generic usage."
+  (if *connection*
+      (format-query query parameters)
+      (with-transient-connection
+        (format-query query parameters))))
 
 (defun spark-query (query parameters columns
                     &rest args

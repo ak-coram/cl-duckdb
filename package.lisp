@@ -136,7 +136,9 @@
            #:with-default-connection
            #:with-transient-connection
            #:query
+           #:q
            #:format-query
+           #:fq
            #:spark-query
            #:vspark-query
            #:run

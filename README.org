@@ -51,13 +51,46 @@ distribution:
   (ql:quickload :duckdb)
 #+end_src
 
-** Basic usage
+** Packages
 
-Please note that the API is experimental and subject to changes.
+- DUCKDB (nicknamed DDB): provides the high-level API.
+- DUCKDB-API: contains the low-level bindings to the DuckDB C API.
+
+** Usage
+
+*** Connecting to a database
+
+This library relies on the special variable DUCKDB:*CONNECTION* for a
+default database connection. Setting up a global default connection is
+recommmended for interactive REPL sessions:
 
 #+begin_src lisp
-  ;; Use an in-memory transient database,
-  ;; DDB:INITIALIZE-DEFAULT-CONNECTION is recommended for REPL sessions
+  ;; Use an in-memory database as the default connection
+  (ddb:initialize-default-connection)
+#+end_src
+
+#+begin_src lisp
+  ;; Use a persistent database as the default connection
+  (ddb:initialize-default-connection :path "my_database.ddb")
+#+end_src
+
+#+begin_src lisp
+  ;; Clean up the default connection at the end of the session
+  (duckdb:disconnect-default-connection)
+#+end_src
+
+For manual connection management most functions requiring a database
+connection also accept a connection object as a keyword argument (see
+DUCKDB:OPEN-DATABASE and DUCKDB:CONNECT for creating one).
+
+To dynamically bind and automatically clean up a default connection,
+refer to DUCKDB:WITH-DEFAULT-CONNECTION and
+DUCKDB:WITH-TRANSIENT-CONNECTION instead.
+
+*** Basic example
+
+#+begin_src lisp
+  ;; Use an in-memory transient database
   (ddb:with-transient-connection
     ;; Create a new range table containing integers
     (ddb:run "CREATE TABLE range (i INTEGER PRIMARY KEY)"
@@ -68,7 +101,6 @@ Please note that the API is experimental and subject to changes.
       (dotimes (_ 1000) (ddb:perform statement)))
 
     ;; Solve Project Euler Problem 9
-
     (let* ((euler9-query (ddb:concat "SELECT a.i * b.i * c.i AS solution "
                                      "FROM range AS c "
                                      "JOIN range AS b ON b.i < c.i "
@@ -78,6 +110,33 @@ Please note that the API is experimental and subject to changes.
            (parameters '(1000))
            (results (ddb:query euler9-query parameters)))
       (format t "PE9 Solution: ~a~%" (ddb:get-result results 'solution 0))))
+#+end_src
+
+*** Interactive example: query remote Parquet data
+
+The DUCKDB:Q (short for QUERY) and DUCKDB:FQ (short for FORMAT-QUERY)
+functions are provided as shorthands for interactive REPL use:
+
+#+begin_src lisp
+  (ddb:initialize-default-connection)
+  (ddb:q "INSTALL httpfs") ; => (("Success" . #()))
+  (let ((url "https://github.com/apache/parquet-mr/raw/master/parquet-hadoop/src/test/resources/test-file-with-no-column-indexes-1.parquet"))
+    (ddb:fq "SELECT * FROM read_parquet(?) WHERE id < 10" url))
+  ;; +----+------+--------------------------------+----------------------------------------+
+  ;; | id | name | location                       | phoneNumbers                           |
+  ;; +----+------+--------------------------------+----------------------------------------+
+  ;; |  0 | p0   | NIL                            | ((phone ((number . 0) (kind . cell)))) |
+  ;; |  1 | p1   | ((lon . 1.0d0) (lat . 2.0d0))  | ((phone ((number . 1) (kind . cell)))) |
+  ;; |  2 | p2   | ((lon . 2.0d0) (lat))          | ((phone ((number . 2) (kind . cell)))) |
+  ;; |  3 | p3   | NIL                            | ((phone ((number . 3) (kind . cell)))) |
+  ;; |  4 | p4   | ((lon . 4.0d0) (lat . 8.0d0))  | ((phone ((number . 4) (kind . cell)))) |
+  ;; |  5 | p5   | ((lon . 5.0d0) (lat))          | ((phone ((number . 5) (kind . cell)))) |
+  ;; |  6 | p6   | NIL                            | ((phone ((number . 6) (kind . cell)))) |
+  ;; |  7 | p7   | ((lon . 7.0d0) (lat . 14.0d0)) | ((phone ((number . 7) (kind . cell)))) |
+  ;; |  8 | p8   | ((lon . 8.0d0) (lat))          | ((phone ((number . 8) (kind . cell)))) |
+  ;; |  9 | p9   | NIL                            | ((phone ((number . 9) (kind . cell)))) |
+  ;; +----+------+--------------------------------+----------------------------------------+
+  ;; => NIL
 #+end_src
 
 *** Sparks
@@ -480,7 +539,6 @@ Alternatively the default return value for SQL NULL can be customized:
   ;; Running directly:
   (duckdb/benchmark:run-benchmarks)
 #+end_src
-
 
 ** Legal
 
