@@ -19,7 +19,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
         quicklisp-dist:
           - ultralisp
-        duckdb: [0.8.0]
+        duckdb: [0.8.1]
         cffi: [default, static]
         exclude:
           - os: windows-latest
