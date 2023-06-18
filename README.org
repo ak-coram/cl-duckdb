@@ -36,7 +36,7 @@ For example on Ubuntu or Debian (amd64):
 #+begin_src sh
   sudo apt-get install libffi-dev unzip
   # Download libduckdb-linux-amd64.zip from the C/C++ section of https://duckdb.org/docs/installation/
-  sudo unzip ~/Downloads/libduckdb-linux-amd64.zip -d /usr/lib/
+  sudo unzip ~/Downloads/libduckdb-linux-amd64.zip libduckdb.so -d /usr/lib/
 #+end_src
 
 ** Installation
