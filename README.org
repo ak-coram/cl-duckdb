@@ -1,4 +1,4 @@
-* cl-duckdb [[./ROADMAP.org][(WiP)]]
+* cl-duckdb
 
 #+begin_html
 <div align="center">
