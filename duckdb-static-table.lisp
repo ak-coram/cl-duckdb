@@ -96,11 +96,12 @@ automatically inferring column types in static tables.")
 
 (defun make-static-columns (columns)
   (loop :for (column-name . column) :in columns
-        :collect
-        (cond
-          ((vectorp column) (make-static-column column-name column nil))
-          ((listp column) (apply #'make-static-column (cons column-name
-                                                            column))))))
+        :for name := (if (stringp column-name)
+                         column-name
+                         (substitute #\_ #\- (string-downcase column-name)))
+        :collect (etypecase column
+                   (vector (make-static-column name column nil))
+                   (list (apply #'make-static-column (cons name column))))))
 
 (defcstruct static-table-bind-data-struct
   (table-name :string)

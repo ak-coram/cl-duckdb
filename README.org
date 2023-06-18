@@ -148,8 +148,8 @@ via [[https://github.com/tkych/cl-spark][cl-spark]]:
   (ddb:initialize-default-connection) ; => #<DUCKDB::CONNECTION {1014081EF3}>
 
   (ddb:bind-static-table
-   "numbers" `(("x" . (,(loop :for i :from 0d0 :by 0.2 :below pi :collect i)
-                        :duckdb-double)))) ; => NIL
+   'numbers `(("x" . (,(loop :for i :from 0d0 :by 0.2 :below pi :collect i)
+                       :duckdb-double)))) ; => NIL
 
   (ddb:spark-query "SELECT x, sin(x) AS y, cos(x) AS z FROM numbers" nil '(x y z))
   ;; X ▁▁▁▂▂▃▃▄▄▅▅▆▆▇▇█
@@ -295,8 +295,8 @@ column type and can contain the following values:
                                    :initial-contents '(1 2 3 4 5 6 7 8 9 10)))
         (primes (make-array '(10) :element-type '(unsigned-byte 8)
                                   :initial-contents '(2 3 5 7 11 13 17 19 23 29))))
-    (ddb:with-static-table ("primes" `(("i" . ,indexes)
-                                       ("p" . ,primes)))
+    (ddb:with-static-table ('primes `((i . ,indexes)
+                                      (p . ,primes)))
       (ddb:format-query "SELECT * FROM primes" nil)))
   ;; +----+----+
   ;; | i  | p  |
@@ -316,17 +316,17 @@ column type and can contain the following values:
 
   ;; DuckDB column types always have to be specified for lists (NIL
   ;; values are converted to NULL):
-  (ddb:with-static-table ("integers" `(("i" . (,(loop :for i :below 1000
-                                                      :if (evenp i) :collect i
-                                                        :else :collect nil)
-                                               :duckdb-integer))))
+  (ddb:with-static-table ('integers `((i . (,(loop :for i :below 1000
+                                                   :if (evenp i) :collect i
+                                                     :else :collect nil)
+                                            :duckdb-integer))))
     (ddb:query (ddb:concat "SELECT sum(i) AS sum "
                            ", COUNT(i) AS not_null_count "
                            "FROM integers")
                nil)) ; => (("sum" . #(249500)) ("not_null_count" . #(500)))
 
-  (ddb:with-static-table ("lyrics" `(("in the year" . (,(list (format nil "~R" 2525))
-                                                       :duckdb-varchar))))
+  (ddb:with-static-table ('lyrics `(("in the year" . (,(list (format nil "~R" 2525))
+                                                      :duckdb-varchar))))
     (ddb:query "SELECT * FROM lyrics" nil))
   ;; => (("in the year" . #("two thousand five hundred twenty-five")))
 
@@ -335,16 +335,16 @@ column type and can contain the following values:
   (ddb:run (ddb:concat "CREATE TABLE polysemy (\"That you have but slumbered here, "
                        "While these visions did appear\" VARCHAR)"))
   (ddb:with-static-table
-      ("polysemy" `(("If we shadows have offended, Think but this, and all is mended:"
-                     . (() :duckdb-varchar))))
+      ('polysemy `(("If we shadows have offended, Think but this, and all is mended:"
+                    . (() :duckdb-varchar))))
     (ddb:query (ddb:concat "SELECT A.*, B.* FROM static_table('polysemy') AS A "
                            "JOIN polysemy AS B ON true")
                nil))
   ;; => (("If we shadows have offended, Think but this, and all is mended:" . #())
   ;;     ("That you have but slumbered here, While these visions did appear" . #()))
 
-  (ddb:with-static-table ("bools" `(("v" . ((nil t :false :true :null)
-                                            :duckdb-boolean))))
+  (ddb:with-static-table ('bools `((v . ((nil t :false :true :null)
+                                         :duckdb-boolean))))
     (ddb:format-query "SELECT v, v IS NULL AS is_null FROM bools" nil))
   ;; +-----+---------+
   ;; | v   | is_null |
@@ -362,17 +362,17 @@ column type and can contain the following values:
   ;; functions. Temporarily overriding a table definition via
   ;; WITH-STATIC-TABLE works as expected:
   (ddb:bind-static-table
-   "alphabet"
-   `(("c" . (("α" "β" "γ" "δ") :duckdb-varchar)))) ; => NIL
+   'alphabet
+   `((c . (("α" "β" "γ" "δ") :duckdb-varchar)))) ; => NIL
 
   (labels ((get-characters ()
              (loop :with results := (ddb:query "SELECT c FROM alphabet" nil)
                    :for c :across (ddb:get-result results 'c)
                    :collect c)))
-    (ddb:with-static-table ("alphabet" `(("c" . (("Ⴀ" "Ⴁ" "Ⴂ" "Ⴃ")
-                                                 :duckdb-varchar))))
-      (ddb:with-static-table ("alphabet" `(("c" . (("𐌀" "𐌁" "𐌂" "𐌃" "𐌄")
-                                                   :duckdb-varchar))))
+    (ddb:with-static-table ('alphabet `((c . (("Ⴀ" "Ⴁ" "Ⴂ" "Ⴃ")
+                                              :duckdb-varchar))))
+      (ddb:with-static-table ('alphabet `((c . (("𐌀" "𐌁" "𐌂" "𐌃" "𐌄")
+                                                :duckdb-varchar))))
         (format t "Etruscan: ~{~a~^, ~}~%" (get-characters)))
       (format t "Asomtavruli: ~{~a~^, ~}~%" (get-characters)))
     (format t "Greek: ~{~a~^, ~}~%" (get-characters)))
@@ -381,7 +381,7 @@ column type and can contain the following values:
   ;; Greek: α, β, γ, δ
   ;; => NIL
 
-  (ddb:unbind-static-table "alphabet") ; => NIL
+  (ddb:unbind-static-table 'alphabet) ; => NIL
   (ddb:clear-static-tables) ; => NIL
 #+end_src
 

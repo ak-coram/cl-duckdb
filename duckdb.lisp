@@ -836,13 +836,18 @@ intentionally."
 
 (defmacro with-static-table ((table-name columns) &body body)
   (alexandria:with-gensyms (table-id)
-    `(let ((,table-id (duckdb-api:add-table-reference
-                       (duckdb-api:make-static-columns ,columns))))
-       (unwind-protect (let ((duckdb-api:*static-table-bindings*
-                               (acons ,table-name ,table-id
-                                      duckdb-api:*static-table-bindings*)))
-                         ,@body)
-         (duckdb-api:clear-table-reference ,table-id)))))
+    (alexandria:once-only (table-name)
+      `(let ((,table-id (duckdb-api:add-table-reference
+                         (duckdb-api:make-static-columns ,columns))))
+         (unwind-protect
+              (let ((duckdb-api:*static-table-bindings*
+                      (acons (if (stringp ,table-name)
+                                 ,table-name
+                                 (param-case-to-snake-case ,table-name))
+                             ,table-id
+                             duckdb-api:*static-table-bindings*)))
+                ,@body)
+           (duckdb-api:clear-table-reference ,table-id))))))
 
 (defmacro with-static-tables (((table-name columns) &rest more-clauses)
                               &body body)
@@ -854,11 +859,17 @@ intentionally."
 
 (defun bind-static-table (table-name columns)
   (duckdb-api:add-global-table-reference
-   table-name (duckdb-api:make-static-columns columns))
+   (if (stringp table-name)
+       table-name
+       (param-case-to-snake-case table-name))
+   (duckdb-api:make-static-columns columns))
   nil)
 
 (defun unbind-static-table (table-name)
-  (duckdb-api:clear-global-table-reference table-name)
+  (duckdb-api:clear-global-table-reference
+   (if (stringp table-name)
+       table-name
+       (param-case-to-snake-case table-name)))
   nil)
 
 (defun clear-static-tables ()
