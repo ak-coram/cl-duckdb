@@ -284,6 +284,7 @@ column type and can contain the following values:
 - Floating point numbers (single-float & double-float)
 - Strings
 - Date, time or datetime values
+- UUIDs
 - NIL values
 
 **** Examples
