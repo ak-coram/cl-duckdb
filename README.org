@@ -13,7 +13,7 @@
 </p>
 #+end_html
 
-This is a Common Lisp [[https://cffi.common-lisp.dev/][CFFI]] wrapper around the [[https://duckdb.org/][DuckDB]] C API.
+Common Lisp [[https://cffi.common-lisp.dev/][CFFI]] wrapper around the [[https://duckdb.org/][DuckDB]] C API
 
 ** Dependencies
 
