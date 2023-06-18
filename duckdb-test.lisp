@@ -481,7 +481,8 @@
                       (:duckdb-uinteger)
                       (:duckdb-integer)
                       (:duckdb-ubigint)
-                      (:duckdb-bigint)))
+                      (:duckdb-bigint)
+                      (:duckdb-hugeint)))
              (table-names
                (loop :for (duckdb-type limit) :in types
                      :for integer-list := (loop :for i :below (or limit

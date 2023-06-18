@@ -58,6 +58,7 @@ automatically inferring column types in static tables.")
       ((simple-array (signed-byte 32)) :duckdb-integer)
       ((simple-array (unsigned-byte 64)) :duckdb-ubigint)
       ((simple-array (signed-byte 64)) :duckdb-bigint)
+      ((simple-array (signed-byte 128)) :duckdb-hugeint)
       ((simple-array single-float) :duckdb-float)
       ((simple-array double-float) :duckdb-double))))
 
@@ -170,9 +171,9 @@ automatically inferring column types in static tables.")
                        :for k fixnum :from index
                        :until (>= k data-length)
                        :do (setf (mem-aref data-ptr
-                                           ,(if is-boolean
-                                                :uint8
-                                                (get-ffi-type duckdb-type))
+                                           ',(if is-boolean
+                                                 :uint8
+                                                 (get-ffi-type duckdb-type))
                                            i)
                                  (aref vector k))
                        :finally (return i)))))))
@@ -217,7 +218,7 @@ automatically inferring column types in static tables.")
                                `(setf (mem-aref data-ptr :uint8 i)
                                       (if (and (not (eql v :false)) v) 1 0)))
                               (t `(setf (mem-aref data-ptr
-                                                  ,(get-ffi-type duckdb-type) i)
+                                                  ',(get-ffi-type duckdb-type) i)
                                         v)))
                  :when (eql validity-bit-index 63)
                    :do (setf (mem-aref validity-ptr :uint64 (floor i 64))
