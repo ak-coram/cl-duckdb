@@ -283,6 +283,7 @@ column type and can contain the following values:
 - Integers in range of the corresponding column type
 - Floating point numbers (single-float & double-float)
 - Strings
+- Date, time or datetime values
 - NIL values
 
 **** Examples

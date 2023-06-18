@@ -182,8 +182,11 @@ automatically inferring column types in static tables.")
 (defmacro copy-static-values (is-vector)
   `(ecase duckdb-type
      ,@(loop
-         :for (_ duckdb-type) :in (cons '(nil :duckdb-varchar)
-                                        (static-table-column-types))
+         :for (_ duckdb-type) :in (append `((nil :duckdb-varchar)
+                                            (nil :duckdb-timestamp)
+                                            (nil :duckdb-date)
+                                            (nil :duckdb-time))
+                                          (static-table-column-types))
          :for is-string := (eql duckdb-type :duckdb-varchar)
          :for is-boolean := (eql duckdb-type :duckdb-boolean)
          :collect
