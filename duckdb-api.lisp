@@ -72,7 +72,7 @@
 
 (defcstruct (duckdb-uuid :class duckdb-uuid-type)
   (lower :uint64)
-  (upper :int64))
+  (upper :uint64))
 
 (defmethod translate-from-foreign (value (type duckdb-uuid-type))
   (with-foreign-slots ((lower upper) value (:struct duckdb-uuid))
