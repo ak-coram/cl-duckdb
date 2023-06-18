@@ -85,6 +85,17 @@
                      :clock-seq-low (ldb (byte 8 48) lower)
                      :node (ldb (byte 48 0) lower)))))
 
+(defmethod translate-into-foreign-memory
+    (value (type duckdb-uuid-type) ptr)
+  (with-foreign-slots ((lower upper) ptr (:struct duckdb-uuid))
+    (setf (ldb (byte 32 32) upper) (fuuid:time-low value)
+          (ldb (byte 16 16) upper) (fuuid:time-mid value)
+          (ldb (byte 16 0) upper) (fuuid:time-hi-and-version value)
+          (ldb (byte 8 56) lower) (fuuid:clock-seq-hi-and-res value)
+          (ldb (byte 8 48) lower) (fuuid:clock-seq-low value)
+          (ldb (byte 48 0) lower) (fuuid:node value)
+          upper (logxor upper (ash 1 63)))))
+
 (defcstruct (duckdb-blob :class duckdb-blob-type)
   (length :uint32)
   (data :uint8 :count 12))
