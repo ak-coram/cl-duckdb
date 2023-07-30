@@ -545,4 +545,5 @@ Alternatively the default return value for SQL NULL can be customized:
 ** Legal
 
 - Released under the MIT License, same as DuckDB.
+- [[https://developercertificate.org/][Developer Certificate of Origin]]
 - [[https://en.wikipedia.org/wiki/File:Pair_of_mandarin_ducks.jpg][Source]] for README photo

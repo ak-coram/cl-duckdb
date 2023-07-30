@@ -3,7 +3,7 @@
 (asdf:defsystem #:duckdb
   :description "CFFI wrapper around the DuckDB C API"
   :author "Ákos Kiss <ak@coram.pub>"
-  :license  "MIT License"
+  :license "MIT License"
   :serial t
   :depends-on (#:bordeaux-threads
                #:cffi
