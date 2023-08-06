@@ -18,7 +18,7 @@ jobs:
     strategy:
       matrix:
         lisp: [sbcl-bin, ccl-bin/1.12.1, ecl/21.2.1]
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         quicklisp-dist:
           - ultralisp
         duckdb: [0.8.1]
@@ -94,5 +94,6 @@ jobs:
           if [ ${{ matrix.cffi }} = 'static' ]; then export CL_DUCKDB_USE_SFFI=t; fi
           export CL_DUCKDB_LIBRARY_PATH="${{ github.workspace }}"
           pacman --noconfirm -S libffi-devel pkgconf
+          ros --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)' --eval '(uiop:quit)'
           ros install neil-lindquist/ci-utils
           run-fiveam -e t -l duckdb/test :duckdb
