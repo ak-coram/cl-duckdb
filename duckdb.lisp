@@ -321,9 +321,10 @@ cleanup."
           :with vector-ffi-type := (duckdb-api:get-ffi-type (or internal-type
                                                                 vector-type))
           :for i :from offset :below (+ offset length)
-          :for v := (unless (eql vector-ffi-type :void)
+          :for is-valid := (duckdb-api:duckdb-validity-row-is-valid child-validity i)
+          :for v := (unless (or (not is-valid) (eql vector-ffi-type :void))
                       (mem-aref child-data vector-ffi-type i))
-          :collect (if (duckdb-api:duckdb-validity-row-is-valid child-validity i)
+          :collect (if is-valid
                        (translate-value-case
                         ((:duckdb-list :duckdb-map)
                          (translate-composite vector-type aux child-vector v
