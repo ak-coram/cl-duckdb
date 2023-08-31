@@ -208,6 +208,14 @@
           (equalp '(("x" . 4) ("y" . 5) ("z" . 6))
                   (ddb:get-result result 'value 1))))))
 
+(test query-union
+  (ddb:with-transient-connection
+    (ddb:run "CREATE TABLE tbl1(u UNION(num INT, str VARCHAR));"
+             "INSERT INTO tbl1 values (1), ('two'), (union_value(str := 'three')), (NULL);")
+    (let ((result (ddb:query "SELECT * FROM tbl1" nil)))
+      (is (equalp #(1 "two" "three" nil)
+                  (ddb:get-result result 'u))))))
+
 (test query-map
   (ddb:with-transient-connection
     (let ((result (ddb:query
