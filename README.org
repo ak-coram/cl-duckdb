@@ -415,6 +415,7 @@ column type and can contain the following values:
 | ENUM types   | string                       |                                               |
 | LIST types   | list                         |                                               |
 | STRUCT types | alist                        |                                               |
+| UNION types  | *                            | Maps to one of the member types (or nil)      |
 
 - https://github.com/dlowe-net/local-time
 - https://github.com/enaeher/local-time-duration
