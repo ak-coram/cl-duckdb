@@ -3,20 +3,13 @@
 (in-package #:duckdb)
 
 (defmacro with-all-float-traps-masked (&rest body)
-  #-ECL `(float-features:with-float-traps-masked (:underflow
-                                                  :overflow
-                                                  :inexact
-                                                  :invalid
-                                                  :divide-by-zero
-                                                  :denormalized-operand)
-           ,@body)
-  #+ECL
-  (alexandria:with-gensyms (previous)
-    `(let ((,previous (ext:trap-fpe 'last nil)))
-       (unwind-protect (progn
-                         (ext:trap-fpe t nil)
-                         ,@body)
-         (ext:trap-fpe ,previous t)))))
+  `(float-features:with-float-traps-masked (:underflow
+                                            :overflow
+                                            :inexact
+                                            :invalid
+                                            :divide-by-zero
+                                            :denormalized-operand)
+     ,@body))
 
 (define-condition duckdb-error (simple-error)
   ((database :initarg :database)
