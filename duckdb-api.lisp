@@ -207,7 +207,8 @@
   (:duckdb-struct)
   (:duckdb-map)
   (:duckdb-uuid)
-  (:duckdb-json))
+  (:duckdb-union)
+  (:duckdb-bit))
 
 (defun get-ffi-type (duckdb-type)
   (ecase duckdb-type
@@ -235,7 +236,8 @@
     (:duckdb-uuid '(:struct duckdb-uuid))
     (:duckdb-list '(:struct duckdb-list))
     (:duckdb-struct :void)
-    (:duckdb-map '(:struct duckdb-list))))
+    (:duckdb-map '(:struct duckdb-list))
+    (:duckdb-union :void)))
 
 (defcstruct duckdb-column)
 
@@ -417,6 +419,15 @@
              :collect
              (with-logical-type (field-type (duckdb-struct-type-child-type logical-type i))
                (with-free (p-field-name (duckdb-struct-type-child-name logical-type i))
+                 (cons (foreign-string-to-lisp p-field-name)
+                       (resolve-logical-type field-type))))
+               :into fields
+             :finally (return (list type nil fields))))
+      (:duckdb-union
+       (loop :for i :below (duckdb-union-type-member-count logical-type)
+             :collect
+             (with-logical-type (field-type (duckdb-union-type-member-type logical-type i))
+               (with-free (p-field-name (duckdb-union-type-member-name logical-type i))
                  (cons (foreign-string-to-lisp p-field-name)
                        (resolve-logical-type field-type))))
                :into fields
@@ -689,6 +700,17 @@
   (index idx))
 
 (defcfun duckdb-struct-type-child-type duckdb-logical-type
+  (type duckdb-logical-type)
+  (index idx))
+
+(defcfun duckdb-union-type-member-count idx
+  (type duckdb-logical-type))
+
+(defcfun duckdb-union-type-member-name (:pointer :char)
+  (type duckdb-logical-type)
+  (index idx))
+
+(defcfun duckdb-union-type-member-type duckdb-logical-type
   (type duckdb-logical-type)
   (index idx))
 

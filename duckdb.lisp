@@ -328,7 +328,7 @@ cleanup."
                         ((:duckdb-list :duckdb-map)
                          (translate-composite vector-type aux child-vector v
                                               sql-null-return-value))
-                        (:duckdb-struct
+                        ((:duckdb-struct :duckdb-union)
                          (translate-composite vector-type aux child-vector i
                                               sql-null-return-value)))
                        sql-null-return-value))))
@@ -351,10 +351,20 @@ cleanup."
                             ((:duckdb-list :duckdb-map)
                              (translate-composite vector-type aux child-vector v
                                                   sql-null-return-value))
-                            (:duckdb-struct
+                            ((:duckdb-struct :duckdb-union)
                              (translate-composite vector-type aux child-vector 0
                                                   sql-null-return-value)))
                            sql-null-return-value))))
+
+(defmethod translate-composite ((type (eql :duckdb-union)) child-types vector i
+                                &optional sql-null-return-value)
+  (let* ((result (translate-composite :duckdb-struct
+                                      ;; add value selector tag to struct members
+                                      (cons '("" :duckdb-utinyint nil nil)
+                                            child-types)
+                                      vector i sql-null-return-value))
+         (value-index (1+ (cdar result))))
+    (cdr (nth value-index result))))
 
 (defmethod translate-composite ((type (eql :duckdb-map)) child-types vector v
                                 &optional sql-null-return-value)
@@ -387,7 +397,7 @@ cleanup."
                         ((:duckdb-list :duckdb-map)
                          (translate-composite vector-type aux vector v
                                               sql-null-return-value))
-                        (:duckdb-struct
+                        ((:duckdb-struct :duckdb-union)
                          (translate-composite vector-type aux vector i
                                               sql-null-return-value))))
                      sql-null-return-value)
