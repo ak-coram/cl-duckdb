@@ -243,6 +243,20 @@
                                             (3 . "c")))))))))
                   result)))))
 
+(test query-bitstring
+  (ddb:with-transient-connection
+    (let ((result (ddb:query (ddb:concat "SELECT '1010'::BIT AS A, "
+                                         "'10101010'::BIT AS B, "
+                                         "'1010101010'::BIT AS C, "
+                                         "'11111111111111111'::BIT AS D, "
+                                         "'00000000000000000'::BIT AS E")
+                             nil)))
+      (is (equalp #*1010 (ddb:get-result result 'a 0)))
+      (is (equalp #*10101010 (ddb:get-result result 'b 0)))
+      (is (equalp #*1010101010 (ddb:get-result result 'c 0)))
+      (is (equalp #*11111111111111111 (ddb:get-result result 'd 0)))
+      (is (equalp #*00000000000000000 (ddb:get-result result 'e 0))))))
+
 (test bind-null
   (test-query "SELECT ? IS NULL AS a, ? AS b" (nil nil)
       (a b)
