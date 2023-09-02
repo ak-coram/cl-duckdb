@@ -237,7 +237,8 @@
     (:duckdb-list '(:struct duckdb-list))
     (:duckdb-struct :void)
     (:duckdb-map '(:struct duckdb-list))
-    (:duckdb-union :void)))
+    (:duckdb-union :void)
+    (:duckdb-bit '(:struct duckdb-blob))))
 
 (defcstruct duckdb-column)
 

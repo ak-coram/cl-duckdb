@@ -298,6 +298,18 @@ cleanup."
                         (* v (expt 10 (- decimal-scale)))))
      (:duckdb-enum (let ((enum-alist aux))
                      (alexandria:assoc-value enum-alist v)))
+     (:duckdb-bit
+      (loop :with unused-bit-count := (aref v 0)
+            :with octet-count := (1- (array-dimension v 0))
+            :with bit-count := (- (* octet-count 8) unused-bit-count)
+            :with bits := (make-array (list bit-count) :element-type 'bit)
+            :for i :below bit-count
+            :for j := (+ i unused-bit-count)
+            :for octet-index := (floor j 8)
+            :for octet := (aref v (1+ octet-index))
+            :for octet-bit-index := (- 7 (mod j 8))
+            :do (setf (aref bits i) (ldb (byte 1 octet-bit-index) octet))
+            :finally (return bits)))
      ,@cases
      (t v)))
 
