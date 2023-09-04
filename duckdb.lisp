@@ -300,7 +300,7 @@ cleanup."
                      (alexandria:assoc-value enum-alist v)))
      (:duckdb-bit
       (loop :with unused-bit-count := (aref v 0)
-            :with octet-count := (1- (array-dimension v 0))
+            :with octet-count := (1- (length v))
             :with bit-count := (- (* octet-count 8) unused-bit-count)
             :with bits := (make-array (list bit-count) :element-type 'bit)
             :for i :below bit-count
