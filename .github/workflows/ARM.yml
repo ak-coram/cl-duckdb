@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ecl: [21.2.1]
+        ecl: [23.9.9]
         cffi: [static]
         duckdb: [0.8.1]
     env:
