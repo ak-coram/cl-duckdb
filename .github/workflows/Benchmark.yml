@@ -17,7 +17,7 @@ jobs:
       matrix:
         lisp: [sbcl-bin, ccl-bin/1.12.2, ecl/23.9.9]
         os: [ubuntu-latest]
-        duckdb: [0.8.1]
+        duckdb: [0.8.1, nightly]
     env:
       LISP: ${{ matrix.lisp }}
       DUCKDB_VERSION: ${{ matrix.duckdb }}
@@ -27,7 +27,7 @@ jobs:
       - name: Install DuckDB
         shell: bash
         run: |
-          aria2c "https://github.com/duckdb/duckdb/releases/download/v${DUCKDB_VERSION}/libduckdb-linux-amd64.zip"
+          if [ ${{ matrix.duckdb }} = 'nightly' ]; then aria2c "https://artifacts.duckdb.org/latest/duckdb-binaries-linux.zip" && unzip duckdb-binaries-linux.zip -d .; else aria2c "https://github.com/duckdb/duckdb/releases/download/v${DUCKDB_VERSION}/libduckdb-linux-amd64.zip"; fi
           unzip libduckdb-linux-amd64.zip -d .
 
       - name: Setup Lisp
