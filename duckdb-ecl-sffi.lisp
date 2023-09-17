@@ -7,8 +7,8 @@
                               (concatenate 'string
                                            " -L"
                                            (uiop:escape-sh-token library-path)))))
-    (setf compiler:*user-ld-flags* (concatenate 'string compiler:*user-ld-flags*
-                                                (when quoted-search-arg
-                                                  quoted-search-arg)
-                                                " -lduckdb"))
+    (setf compiler:*user-linker-libs* (concatenate 'string compiler:*user-linker-libs*
+                                                   (when quoted-search-arg
+                                                     quoted-search-arg)
+                                                   " -lduckdb"))
     (setf cffi-sys:*cffi-ecl-method* :c/c++)))

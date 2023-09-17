@@ -22,9 +22,8 @@ This can be enabled automatically using environment variables:
 Alternatively the following can be used instead:
 
 #+begin_src lisp
-  ;; Tell the linker to link with DuckDB (up to ECL-21.2.1, later
-  ;; versions should use COMPILER:*USER-LINKER-LIBS* instead):
-  (setf compiler:*user-ld-flags* "-lduckdb")
+  ;; Tell the linker to link with DuckDB:
+  (setf compiler:*user-linker-libs* "-lduckdb")
 
   ;; CFFI needs to be loaded first:
   (ql:quickload :cffi)
