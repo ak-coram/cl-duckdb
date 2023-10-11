@@ -30,7 +30,7 @@ jobs:
         with:
           cpu: cortex-a53
           base_image: raspios_lite_arm64:latest
-          image_additional_mb: 1024
+          image_additional_mb: 2048
           commands: |
             apt-get --yes install git build-essential aria2 unzip clang m4 libgc-dev libffi-dev lld
             git clone --depth 1 --branch ${{ matrix.ecl }} https://gitlab.com/embeddable-common-lisp/ecl.git
