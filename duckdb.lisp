@@ -926,7 +926,7 @@ intentionally."
            (perform ,finish-statement))))))
 
 ;; Initialize the default number of threads based on DuckDB defaults
-(unless *default-thread-count*
+(eval-when (:load-toplevel :execute)
   (with-open-database (db :threads nil)
     (with-default-connection (db)
       (setf *default-thread-count*
