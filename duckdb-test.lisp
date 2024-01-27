@@ -285,7 +285,8 @@
 
 (test bind-integers
   (test-query
-      (ddb:concat "SELECT ?::hugeint AS minhugeint"
+      (ddb:concat "SELECT ?::uhugeint AS maxuhugeint"
+                  ", ?::hugeint AS minhugeint"
                   ", ?::hugeint AS maxhugeint"
                   ", ?::tinyint AS tinyint"
                   ", ?::utinyint AS utinyint"
@@ -295,14 +296,17 @@
                   ", ?::uinteger AS uinteger"
                   ", ?::bigint AS bigint"
                   ", ?::ubigint AS ubigint")
-      (-170141183460469231731687303715884105727
+      (340282366920938463463374607431768211455
+       -170141183460469231731687303715884105727
        170141183460469231731687303715884105727
        -128 255 -32768 65535 -2147483648 4294967295
        -9223372036854775808 18446744073709551615)
-      (minhugeint
+      (maxuhugeint
+       minhugeint
        maxhugeint
        tinyint smallint integer bigint
        utinyint usmallint uinteger ubigint)
+    (is (eql 340282366920938463463374607431768211455 maxuhugeint))
     (is (eql -170141183460469231731687303715884105727 minhugeint))
     (is (eql 170141183460469231731687303715884105727 maxhugeint))
     (is (eql -128 tinyint))
@@ -431,8 +435,10 @@
   (test-append "bigint" '(-9223372036854775808))
   (test-append "ubigint"  '(18446744073709551615))
   (test-append "hugeint"
-      '(-170141183460469231731687303715884105727
-        170141183460469231731687303715884105727)))
+               '(-170141183460469231731687303715884105727
+                 170141183460469231731687303715884105727))
+  (test-append "uhugeint"
+               '(340282366920938463463374607431768211455)))
 
 (test append-blob
   (let ((s "Árvíztűrő tükörfúrógép"))
@@ -504,7 +510,8 @@
                       (:duckdb-integer)
                       (:duckdb-ubigint)
                       (:duckdb-bigint)
-                      (:duckdb-hugeint)))
+                      (:duckdb-hugeint)
+                      (:duckdb-uhugeint)))
              (table-names
                (loop :for (duckdb-type limit) :in types
                      :for integer-list := (loop :for i :below (or limit

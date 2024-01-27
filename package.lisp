@@ -61,6 +61,7 @@
            #:duckdb-bind-int32
            #:duckdb-bind-int64
            #:duckdb-bind-hugeint
+           #:duckdb-bind-uhugeint
            #:duckdb-bind-date
            #:duckdb-bind-timestamp
            #:duckdb-bind-time
@@ -90,6 +91,7 @@
            #:duckdb-append-int32
            #:duckdb-append-int64
            #:duckdb-append-hugeint
+           #:duckdb-append-uhugeint
            #:duckdb-append-date
            #:duckdb-append-timestamp
            #:duckdb-append-time

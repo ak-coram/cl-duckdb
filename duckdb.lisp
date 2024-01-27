@@ -522,6 +522,10 @@ binding a bit more concise. It is not intended for any other use."
                               -170141183460469231731687303715884105727
                               170141183460469231731687303715884105727)
              (duckdb-api:duckdb-bind-hugeint statement-handle i value))
+            (:duckdb-uhugeint (integer
+                               0
+                               340282366920938463463374607431768211455)
+             (duckdb-api:duckdb-bind-uhugeint statement-handle i value))
             (:duckdb-date local-time:date
              (duckdb-api:duckdb-bind-date statement-handle i value))
             (:duckdb-timestamp local-time:timestamp
@@ -817,6 +821,7 @@ intentionally."
             (:duckdb-ubigint (duckdb-api:duckdb-append-uint64 handle value))
             ;; hugeint
             (:duckdb-hugeint (duckdb-api:duckdb-append-hugeint handle value))
+            (:duckdb-uhugeint (duckdb-api:duckdb-append-uhugeint handle value))
             (:duckdb-date (duckdb-api:duckdb-append-date handle value))
             (:duckdb-timestamp (duckdb-api:duckdb-append-timestamp handle value))
             (:duckdb-time (duckdb-api:duckdb-append-time handle value))

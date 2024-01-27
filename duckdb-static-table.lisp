@@ -59,6 +59,7 @@ automatically inferring column types in static tables.")
       ((simple-array (unsigned-byte 64)) :duckdb-ubigint)
       ((simple-array (signed-byte 64)) :duckdb-bigint)
       ((simple-array (signed-byte 128)) :duckdb-hugeint)
+      ((simple-array (unsigned-byte 128)) :duckdb-uhugeint)
       ((simple-array single-float) :duckdb-float)
       ((simple-array double-float) :duckdb-double))))
 

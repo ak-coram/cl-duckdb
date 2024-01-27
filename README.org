@@ -259,20 +259,21 @@ different ones.
 
 **** Specialized vectors
 
-| Common Lisp type   | DuckDB Type |
-|--------------------+-------------|
-| bit                | BOOLEAN     |
-| (unsigned-byte 8)  | UTINYINT    |
-| (unsigned-byte 16) | USMALLINT   |
-| (unsigned-byte 32) | UINTEGER    |
-| (unsigned-byte 64) | UBIGINT     |
-| (signed-byte 8)    | TINYINT     |
-| (signed-byte 16)   | SMALLINT    |
-| (signed-byte 32)   | INTEGER     |
-| (signed-byte 64)   | BIGINT      |
-| (signed-byte 128)  | HUGEINT     |
-| single-float       | REAL        |
-| double-float       | DOUBLE      |
+| Common Lisp type    | DuckDB Type |
+|---------------------+-------------|
+| bit                 | BOOLEAN     |
+| (unsigned-byte 8)   | UTINYINT    |
+| (unsigned-byte 16)  | USMALLINT   |
+| (unsigned-byte 32)  | UINTEGER    |
+| (unsigned-byte 64)  | UBIGINT     |
+| (unsigned-byte 128) | UHUGEINT    |
+| (signed-byte 8)     | TINYINT     |
+| (signed-byte 16)    | SMALLINT    |
+| (signed-byte 32)    | INTEGER     |
+| (signed-byte 64)    | BIGINT      |
+| (signed-byte 128)   | HUGEINT     |
+| single-float        | REAL        |
+| double-float        | DOUBLE      |
 
 **** Lists & unspecialized vectors
 
@@ -407,6 +408,7 @@ column type and can contain the following values:
 | BIGINT          | integer                      |                                               |
 | UBIGINT         | integer                      |                                               |
 | HUGEINT         | integer                      |                                               |
+| UHUGEINT        | integer                      |                                               |
 | DATE            | local-time:date              |                                               |
 | TIMESTAMP       | local-time:timestamp         | Microsecond precision                         |
 | TIME            | local-time-duration:duration | Microsecond precision                         |

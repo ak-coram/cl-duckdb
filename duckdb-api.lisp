@@ -70,6 +70,20 @@
       (setf lower (ldb (byte 64 0) value)
             upper (* multiplier (ldb (byte 64 64) value))))))
 
+(defcstruct (duckdb-uhugeint :class duckdb-uhugeint-type)
+  (lower :uint64)
+  (upper :uint64))
+
+(defmethod translate-from-foreign (value (type duckdb-uhugeint-type))
+  (with-foreign-slots ((lower upper) value (:struct duckdb-uhugeint))
+    (logior (ash upper 64) lower)))
+
+(defmethod translate-into-foreign-memory
+    (value (type duckdb-uhugeint-type) ptr)
+  (with-foreign-slots ((lower upper) ptr (:struct duckdb-uhugeint))
+    (setf lower (ldb (byte 64 0) value)
+          upper (ldb (byte 64 64) value))))
+
 (defcstruct (duckdb-uuid :class duckdb-uuid-type)
   (lower :uint64)
   (upper :uint64))
@@ -196,6 +210,7 @@
   (:duckdb-time)
   (:duckdb-interval)
   (:duckdb-hugeint)
+  (:duckdb-uhugeint)
   (:duckdb-varchar)
   (:duckdb-blob)
   (:duckdb-decimal)
@@ -225,6 +240,7 @@
     (:duckdb-double :double)
     (:duckdb-varchar '(:struct duckdb-string))
     (:duckdb-hugeint '(:struct duckdb-hugeint))
+    (:duckdb-uhugeint '(:struct duckdb-uhugeint))
     (:duckdb-blob '(:struct duckdb-blob))
     (:duckdb-date '(:struct duckdb-date))
     (:duckdb-time '(:struct duckdb-time))
@@ -564,6 +580,11 @@
   (param-idx idx)
   (val (:struct duckdb-hugeint)))
 
+(defcfun duckdb-bind-uhugeint :void
+  (prepared-statement duckdb-prepared-statement)
+  (param-idx idx)
+  (val (:struct duckdb-uhugeint)))
+
 (defcfun duckdb-bind-date :void
   (prepared-statement duckdb-prepared-statement)
   (param-idx idx)
@@ -662,6 +683,10 @@
 (defcfun duckdb-append-hugeint :void ; TODO: duckdb-state doesn't work
   (appender duckdb-appender)
   (val (:struct duckdb-hugeint)))
+
+(defcfun duckdb-append-uhugeint :void
+  (appender duckdb-appender)
+  (val (:struct duckdb-uhugeint)))
 
 (defcfun duckdb-append-date :void
   (appender duckdb-appender)
