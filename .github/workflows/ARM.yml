@@ -23,7 +23,7 @@ jobs:
     env:
       DUCKDB_VERSION: ${{ matrix.duckdb }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install dependencies & run tests
         uses: pguyot/arm-runner-action@v2

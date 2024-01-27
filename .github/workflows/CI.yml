@@ -38,7 +38,7 @@ jobs:
       DUCKDB_VERSION: ${{ matrix.duckdb }}
       QUICKLISP_DIST: ${{ matrix.quicklisp-dist }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install DuckDB (Linux)
         if: runner.os == 'Linux'
