@@ -83,6 +83,7 @@ jobs:
           export CL_DUCKDB_LIBRARY_PATH="${{ github.workspace }}"
           if [ ${{ matrix.os }} = 'macos-latest' ]; then sudo cp ./libduckdb.dylib /usr/local/lib/; fi
           ros install neil-lindquist/ci-utils
+          asdf-register-project
           run-fiveam -e t -l duckdb/test :duckdb
 
       - name: Run tests (Windows)
@@ -96,4 +97,5 @@ jobs:
           pacman --noconfirm -S libffi-devel pkgconf
           ros --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)' --eval '(uiop:quit)'
           ros install neil-lindquist/ci-utils
+          asdf-register-project
           run-fiveam -e t -l duckdb/test :duckdb
