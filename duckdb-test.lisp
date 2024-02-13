@@ -17,20 +17,21 @@
       (ddb:with-threads nil
         (ddb:with-transient-connection
           (is (equalp (get-thread-counts)
-                      (vector default-thread-count 0)))))
+                      (vector default-thread-count 1)))))
       (ddb:with-threads 1
         (ddb:with-transient-connection
-          (is (equalp (get-thread-counts) (vector 1 0)))))
+          (is (equalp (get-thread-counts) (vector 1 1)))))
       (ddb:with-threads 2
         (ddb:with-transient-connection
           (is (equalp (get-thread-counts)
-                      #+bordeaux-threads (vector 1 1)
-                      #-bordeaux-threads (vector 1 0)))))
+                      #+bordeaux-threads (vector 2 2)
+                      #-bordeaux-threads (vector 1 1)))))
       (ddb:with-threads t
         (ddb:with-transient-connection
           (is (equalp (get-thread-counts)
-                      #+bordeaux-threads (vector 1 (1- default-thread-count))
-                      #-bordeaux-threads (vector 1 0))))))))
+                      #+bordeaux-threads (vector default-thread-count
+                                                 default-thread-count)
+                      #-bordeaux-threads (vector 1 1))))))))
 
 (defmacro test-query (query parameters result-syms &body body)
   (alexandria:with-gensyms (db conn results)

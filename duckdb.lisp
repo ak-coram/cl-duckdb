@@ -35,9 +35,10 @@
     (with-foreign-object (p-error-message '(:pointer :string))
       (duckdb-api:with-config
           (config (when threads
-                    (list "threads" 1
+                    (list "threads" #+bordeaux-threads threads
+                                    #-bordeaux-threads 1
                           "external_threads" #+bordeaux-threads threads
-                                             #-bordeaux-threads 0)))
+                                             #-bordeaux-threads 1)))
         (let (;; prefer duckdb-open-ext over duckdb-open for error message
               (result (duckdb-api:duckdb-open-ext path
                                                   p-database
@@ -48,8 +49,8 @@
                      (pool (when (and #+bordeaux-threads t
                                       #-bordeaux-threads nil
                                       threads
-                                      (plusp threads))
-                             (duckdb-api:start-worker-pool handle threads))))
+                                      (< 1 threads))
+                             (duckdb-api:start-worker-pool handle (1- threads)))))
                 (duckdb-api:add-static-table-replacement-scan handle)
                 (setf (handle instance) handle
                       (path instance) path
@@ -96,9 +97,9 @@ for THREADS."
                  :path path
                  :threads
                  (when (and *default-thread-count* threads)
-                   (1- (etypecase threads
-                         ((integer 1) threads)
-                         (boolean *default-thread-count*))))))
+                   (etypecase threads
+                     ((integer 1) threads)
+                     (boolean *default-thread-count*)))))
 
 (defun close-database (database)
   "Does resource cleanup for DATABASE, also see OPEN-DATABASE."
