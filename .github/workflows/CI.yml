@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         lisp: [sbcl-bin, ccl-bin/1.12.2, ecl/23.9.9]
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
         quicklisp-dist:
           - ultralisp
         duckdb: [0.10.0]
