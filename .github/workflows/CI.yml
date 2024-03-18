@@ -22,7 +22,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-13, macos-14]
         quicklisp-dist:
           - ultralisp
-        duckdb: [0.10.0]
+        duckdb: [0.10.1]
         cffi: [default, static]
         exclude:
           - lisp: sbcl-bin
