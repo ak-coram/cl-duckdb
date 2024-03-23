@@ -90,12 +90,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
-          export C_INCLUDE_PATH=$C_INCLUDE_PATH:/usr/include/:./
-          export LIBRARY_PATH=$LIBRARY_PATH:/usr/lib/:./
           if [ ${{ matrix.cffi }} = 'static' ]; then export CL_DUCKDB_USE_SFFI=t; fi
           export CL_DUCKDB_LIBRARY_PATH="${{ github.workspace }}"
-          pacman --noconfirm -S libffi-devel pkgconf
-          ros --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)' --eval '(uiop:quit)'
+          pacman --noconfirm -S mingw-w64-x86_64-pkg-config mingw-w64-x86_64-libffi
+          ros --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)' --eval '(ql:quickload :cffi-grovel)' --eval "(progn (setf cffi-grovel::*cc-flags* (append (list \"-I`cygpath -w /mingw64/include`\") cffi-grovel::*cc-flags*)) (ql:quickload :cffi-libffi))" --eval '(uiop:quit)'
           ros install neil-lindquist/ci-utils
           asdf-register-project
           run-fiveam -e t -l duckdb/test :duckdb
