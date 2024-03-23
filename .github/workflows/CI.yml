@@ -89,11 +89,11 @@ jobs:
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
-          export C_INCLUDE_PATH=$C_INCLUDE_PATH:/usr/include/:./
-          export LIBRARY_PATH=$LIBRARY_PATH:/usr/lib/:./
+          export C_INCLUDE_PATH="$C_INCLUDE_PATH:/mingw64/include/:./"
+          export LIBRARY_PATH="$LIBRARY_PATH:/mingw64/bin/:./"
           if [ ${{ matrix.cffi }} = 'static' ]; then export CL_DUCKDB_USE_SFFI=t; fi
           export CL_DUCKDB_LIBRARY_PATH="${{ github.workspace }}"
-          pacman --noconfirm -S libffi-devel pkgconf
+          pacman --noconfirm -S mingw-w64-x86_64-pkg-config mingw-w64-x86_64-libffi
           ros --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)' --eval '(uiop:quit)'
           ros install neil-lindquist/ci-utils
           asdf-register-project
