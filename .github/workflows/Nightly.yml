@@ -39,9 +39,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Lisp
+        uses: 40ants/setup-lisp@v4
+        with:
+          cache: ${{ runner.os != 'macOS' }}
+
       - name: Install DuckDB (Linux)
         if: runner.os == 'Linux'
-        continue-on-error: true
         shell: bash
         run: |
           aria2c "https://artifacts.duckdb.org/latest/duckdb-binaries-linux.zip"
@@ -50,7 +54,6 @@ jobs:
 
       - name: Install DuckDB (macOS)
         if: runner.os == 'macOS'
-        continue-on-error: true
         shell: bash
         run: |
           aria2c "https://artifacts.duckdb.org/latest/duckdb-binaries-osx.zip"
@@ -59,17 +62,10 @@ jobs:
 
       - name: Install DuckDB (Windows)
         if: runner.os == 'Windows'
-        continue-on-error: true
         run: |
           aria2c "https://artifacts.duckdb.org/latest/duckdb-binaries-windows.zip"
           7z x duckdb-binaries-windows.zip
           7z x libduckdb-windows-amd64.zip
-
-      - name: Setup Lisp
-        continue-on-error: true
-        uses: 40ants/setup-lisp@v4
-        with:
-          cache: false
 
       - name: Run tests (Non-Windows)
         if: runner.os != 'Windows'
@@ -80,7 +76,6 @@ jobs:
           if [ ${{ matrix.cffi }} = 'static' ]; then export CL_DUCKDB_USE_SFFI=t; fi
           export CL_DUCKDB_LIBRARY_PATH="${{ github.workspace }}"
           if [ ${{ matrix.os }} = 'macos-latest' ]; then sudo cp ./libduckdb.dylib /usr/local/lib/; fi
-          rm -f ~/.roswell/init.lisp || true
           ros --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)' --eval '(uiop:quit)'
           ros install neil-lindquist/ci-utils
           asdf-register-project
