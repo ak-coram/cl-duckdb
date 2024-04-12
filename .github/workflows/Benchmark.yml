@@ -32,10 +32,9 @@ jobs:
 
       - name: Setup Lisp
         continue-on-error: true
-        uses: 40ants/setup-lisp@v2
+        uses: 40ants/setup-lisp@v4
         with:
-          qlfile-template: |
-            dist ultralisp http://dist.ultralisp.org
+          cache: false
 
       - name: Run benchmarks
         shell: bash
@@ -43,4 +42,6 @@ jobs:
           export LD_LIBRARY_PATH=./
           export CL_DUCKDB_USE_SFFI=t
           export CL_DUCKDB_LIBRARY_PATH="${{ github.workspace }}"
+          rm -f ~/.roswell/init.lisp || true
+          ros --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)' --eval '(uiop:quit)'
           ros run --eval '(progn (ql:quickload :duckdb/benchmark) (asdf:test-system :duckdb/benchmark) (quit))'

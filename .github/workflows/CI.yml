@@ -13,15 +13,13 @@ on:
 
 jobs:
   test:
-    name: ${{ matrix.lisp }} (${{ matrix.cffi }}) / ${{ matrix.quicklisp-dist }} on ${{ matrix.os }} with duckdb ${{ matrix.duckdb }}
+    name: ${{ matrix.lisp }} (${{ matrix.cffi }}) on ${{ matrix.os }} with duckdb ${{ matrix.duckdb }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         lisp: [sbcl-bin, ccl-bin/1.12.2, ecl/23.9.9]
         os: [ubuntu-latest, windows-latest, macos-13, macos-14]
-        quicklisp-dist:
-          - ultralisp
         duckdb: [0.10.1]
         cffi: [default, static]
         exclude:
@@ -33,10 +31,11 @@ jobs:
             lisp: ccl-bin/1.12.2
           - os: windows-latest
             lisp: ecl/23.9.9
+          - os: macos-14
+            lisp: ccl-bin/1.12.2
     env:
       LISP: ${{ matrix.lisp }}
       DUCKDB_VERSION: ${{ matrix.duckdb }}
-      QUICKLISP_DIST: ${{ matrix.quicklisp-dist }}
     steps:
       - uses: actions/checkout@v4
 
@@ -65,12 +64,9 @@ jobs:
 
       - name: Setup Lisp
         continue-on-error: true
-        uses: 40ants/setup-lisp@v2
+        uses: 40ants/setup-lisp@v4
         with:
-          qlfile-template: |
-            {% ifequal quicklisp_dist "ultralisp" %}
-            dist ultralisp http://dist.ultralisp.org
-            {% endifequal %}
+          cache: false
 
       - name: Run tests (Non-Windows)
         if: runner.os != 'Windows'
@@ -81,6 +77,8 @@ jobs:
           if [ ${{ matrix.cffi }} = 'static' ]; then export CL_DUCKDB_USE_SFFI=t; fi
           export CL_DUCKDB_LIBRARY_PATH="${{ github.workspace }}"
           if [ ${{ matrix.os }} = 'macos-latest' ]; then sudo cp ./libduckdb.dylib /usr/local/lib/; fi
+          rm -f ~/.roswell/init.lisp || true
+          ros --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)' --eval '(uiop:quit)'
           ros install neil-lindquist/ci-utils
           asdf-register-project
           run-fiveam -e t -l duckdb/test :duckdb
@@ -92,7 +90,5 @@ jobs:
           if [ ${{ matrix.cffi }} = 'static' ]; then export CL_DUCKDB_USE_SFFI=t; fi
           export CL_DUCKDB_LIBRARY_PATH="${{ github.workspace }}"
           pacman --noconfirm -S mingw-w64-x86_64-pkg-config mingw-w64-x86_64-libffi
-          ros --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)' --eval '(ql:quickload :cffi-grovel)' --eval "(progn (setf cffi-grovel::*cc-flags* (append (list \"-I`cygpath -w /mingw64/include`\") cffi-grovel::*cc-flags*)) (ql:quickload :cffi-libffi))" --eval '(uiop:quit)'
-          ros install neil-lindquist/ci-utils
-          asdf-register-project
-          run-fiveam -e t -l duckdb/test :duckdb
+          ros --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)' --eval '(uiop:quit)'
+          ros --eval '(ql:quickload :cffi-grovel)' --eval "(progn (setf cffi-grovel::*cc-flags* (append (list \"-I`cygpath -w /mingw64/include`\") cffi-grovel::*cc-flags*)) (ql:quickload :cffi-libffi))" --eval "(progn (ql:quickload :duckdb/test) (uiop:quit (if (uiop:symbol-call :fiveam '#:run! :duckdb) 0 1)))"
