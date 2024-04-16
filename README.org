@@ -18,12 +18,12 @@ Common Lisp [[https://cffi.common-lisp.dev/][CFFI]] wrapper around the [[https:/
 ** Dependencies
 
 Currently the following Common Lisp implementations and operating
-systems are tested via [[https://github.com/ak-coram/cl-duckdb/blob/main/.github/workflows/CI.yml][CI]] on x86-64. [[https://github.com/ak-coram/cl-duckdb/blob/main/.github/workflows/ARM.yml][AArch64]], Android via Termux (ECL)
-and some other BSDs are also known to work.
+systems are tested via [[https://github.com/ak-coram/cl-duckdb/blob/main/.github/workflows/CI.yml][CI]]. Android via Termux (ECL & SBCL) and some
+other BSDs are also known to work.
 
-- [[https://sbcl.org/][SBCL]] (Linux, FreeBSD, Windows, macOS)
+- [[https://sbcl.org/][SBCL]] (Linux, FreeBSD, Windows, macOS, macOS on AArch64)
 - [[https://ccl.clozure.com/][CCL]] (Linux, macOS)
-- [[https://ecl.common-lisp.dev/][ECL]] (Linux, FreeBSD, macOS), see the [[./ECL.org][ECL.org]] document for specifics
+- [[https://ecl.common-lisp.dev/][ECL]] (Linux, FreeBSD, macOS, macOS on AArch64), see the [[./ECL.org][ECL.org]] document for specifics
 
 The following native libraries need to be installed in a location
 where CFFI can find them:
