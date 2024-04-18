@@ -42,7 +42,7 @@ jobs:
       - name: Setup Lisp
         uses: 40ants/setup-lisp@v4
         with:
-          cache: ${{ matrix.os != 'macos-14' }}
+          cache: true
 
       - name: Install DuckDB (Linux)
         if: runner.os == 'Linux'
