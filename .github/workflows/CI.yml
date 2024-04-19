@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "ci-test" ]
     paths-ignore:
       - 'README.org'
   pull_request:
@@ -40,7 +40,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Lisp
-        uses: 40ants/setup-lisp@v4
+        uses: ak-coram/setup-lisp@extend-qlot-cache-key-with-runner-arch
         with:
           cache: true
 
