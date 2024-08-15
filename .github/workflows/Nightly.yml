@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        lisp: [sbcl-bin, ccl-bin/1.12.2, ecl/24.5.10]
+        lisp: [sbcl-bin, ccl-bin/1.13, ecl/24.5.10]
         os: [ubuntu-latest, windows-latest, macos-13, macos-14]
         quicklisp-dist:
           - ultralisp
@@ -26,14 +26,14 @@ jobs:
         exclude:
           - lisp: sbcl-bin
             cffi: static
-          - lisp: ccl-bin/1.12.2
+          - lisp: ccl-bin/1.13
             cffi: static
           - os: windows-latest
-            lisp: ccl-bin/1.12.2
+            lisp: ccl-bin/1.13
           - os: windows-latest
             lisp: ecl/24.5.10
           - os: macos-14
-            lisp: ccl-bin/1.12.2
+            lisp: ccl-bin/1.13
     env:
       LISP: ${{ matrix.lisp }}
     steps:
