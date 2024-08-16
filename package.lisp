@@ -113,7 +113,13 @@
 (defpackage #:duckdb
   (:nicknames #:ddb)
   (:use #:cl #:cffi)
-  (:export #:*connection*
+  (:export #:duckdb-error
+           #:database
+           #:statement
+           #:appender
+           #:arrow
+           #:error-message
+           #:*connection*
            #:*threads*
            #:*default-thread-count*
            #:*sql-null-return-value*

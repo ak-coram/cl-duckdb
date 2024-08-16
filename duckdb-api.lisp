@@ -331,28 +331,20 @@
   (result p-duckdb-result)
   (col idx))
 
-(defcfun duckdb-result-chunk-count idx
+(defcfun duckdb-fetch-chunk (duckdb-data-chunk)
   (result (:struct duckdb-result)))
-
-(defun result-chunk-count (p-result)
-  (duckdb-result-chunk-count (mem-ref p-result '(:struct duckdb-result))))
-
-(defcfun duckdb-result-get-chunk (duckdb-data-chunk)
-  (result (:struct duckdb-result))
-  (chunk-index idx))
 
 (defcfun duckdb-destroy-data-chunk :void
   (chunk (:pointer duckdb-data-chunk)))
 
-(defmacro with-data-chunk ((chunk-var result chunk-index) &body body)
-  `(let ((,chunk-var (duckdb-result-get-chunk
-                      (mem-ref ,result '(:struct duckdb-result))
-                      ,chunk-index)))
-     (unwind-protect
-          (progn ,@body)
-       (with-foreign-object (p-chunk '(:pointer duckdb-data-chunk))
-         (setf (mem-ref p-chunk 'duckdb-data-chunk) ,chunk-var)
-         (duckdb-destroy-data-chunk p-chunk)))))
+(defmacro with-data-chunk ((chunk-var result) &body body)
+  `(let ((,chunk-var (duckdb-fetch-chunk
+                      (mem-ref ,result '(:struct duckdb-result)))))
+     (unwind-protect (progn ,@body)
+       (unless (null-pointer-p ,chunk-var)
+         (with-foreign-object (p-chunk '(:pointer duckdb-data-chunk))
+           (setf (mem-ref p-chunk 'duckdb-data-chunk) ,chunk-var)
+           (duckdb-destroy-data-chunk p-chunk))))))
 
 (defun result-get-chunk (p-result i)
   (duckdb-result-get-chunk (mem-ref p-result '(:struct duckdb-result)) i))

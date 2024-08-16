@@ -12,10 +12,10 @@
      ,@body))
 
 (define-condition duckdb-error (simple-error)
-  ((database :initarg :database)
-   (statement :initarg :statement)
-   (appender :initarg :appender)
-   (arrow :initarg :arrow)
+  ((database :initarg :database :accessor database)
+   (statement :initarg :statement :accessor statement)
+   (appender :initarg :appender :accessor appender)
+   (arrow :initarg :arrow :accessor arrow)
    (error-message :initarg :error-message
                   :accessor error-message))
   (:report (lambda (condition stream)
@@ -241,8 +241,8 @@ The connection and the database are cleaned up after BODY is evaluated."
 ;;; Queries
 
 (defclass result ()
-  ((connection :initarg :connection)
-   (statement :initarg :statement)
+  ((connection :accessor connection :initarg :connection)
+   (statement :accessor statement :initarg :statement)
    (handle :accessor handle :initarg :handle)))
 
 (defun make-result (connection statement p-result)
@@ -425,7 +425,6 @@ cleanup."
 
 (defun translate-result (result &optional sql-null-return-value)
   (let* ((p-result (handle result))
-         (chunk-count (duckdb-api:result-chunk-count p-result))
          (column-count (duckdb-api:duckdb-column-count p-result))
          (result-alist
            (loop :for column-index :below column-count
@@ -433,14 +432,24 @@ cleanup."
                                 (make-array '(0) :adjustable t :fill-pointer 0))))
          column-types
          (row-count
-           (loop :for chunk-index :below chunk-count
-                 :sum (duckdb-api:with-data-chunk (chunk p-result chunk-index)
-                        (multiple-value-bind (types chunk-size)
-                            (translate-chunk result-alist
-                                             chunk
-                                             sql-null-return-value)
-                          (setf column-types types)
-                          chunk-size)))))
+           (loop :for n
+                   := (duckdb-api:with-data-chunk (chunk p-result)
+                        (if (null-pointer-p chunk)
+                            (alexandria:when-let
+                                (error-message (duckdb-api:duckdb-result-error
+                                                p-result))
+                              (destroy-result result)
+                              (error 'duckdb-error
+                                     :database (database (connection result))
+                                     :statement (statement result)
+                                     :error-message error-message))
+                            (multiple-value-bind (types chunk-size)
+                                (translate-chunk result-alist
+                                                 chunk
+                                                 sql-null-return-value)
+                              (setf column-types types)
+                              chunk-size)))
+                 :while n :sum n)))
     (values result-alist column-types row-count)))
 
 (defun assert-parameter-count (statement values)
