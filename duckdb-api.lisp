@@ -346,9 +346,6 @@
            (setf (mem-ref p-chunk 'duckdb-data-chunk) ,chunk-var)
            (duckdb-destroy-data-chunk p-chunk))))))
 
-(defun result-get-chunk (p-result i)
-  (duckdb-result-get-chunk (mem-ref p-result '(:struct duckdb-result)) i))
-
 (defcfun duckdb-data-chunk-get-column-count (idx)
   (chunk duckdb-data-chunk))
 
