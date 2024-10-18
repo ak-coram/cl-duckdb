@@ -41,8 +41,13 @@ For example on Ubuntu or Debian (amd64):
 
 ** Installation
 
-cl-duckdb can now be installed via [[https://www.quicklisp.org/][Quicklisp]] from the [[https://ultralisp.org/][Ultralisp]]
-distribution:
+cl-duckdb can be installed via [[https://www.quicklisp.org/][Quicklisp]]:
+
+#+begin_src lisp
+  (ql:quickload :duckdb)
+#+end_src
+
+The latest version is available from the [[https://ultralisp.org/][Ultralisp]] distribution:
 
 #+begin_src lisp
   ;; Install the ultralisp distribution if you don't have it already
@@ -50,6 +55,8 @@ distribution:
   ;; Load cl-duckdb
   (ql:quickload :duckdb)
 #+end_src
+
+Alternatively you can also rely on [[https://github.com/ocicl/ocicl][ocicl]].
 
 ** Packages
 
