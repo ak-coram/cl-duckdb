@@ -225,7 +225,10 @@
   (:duckdb-union 28)
   (:duckdb-bit 29)
   (:duckdb-time-tz 30)
-  (:duckdb-timestamp-tz 31))
+  (:duckdb-timestamp-tz 31)
+  (:duckdb-any 34)
+  (:duckdb-varint 35)
+  (:duckdb-sqlnull 36))
 
 (defun get-ffi-type (duckdb-type)
   (ecase duckdb-type
