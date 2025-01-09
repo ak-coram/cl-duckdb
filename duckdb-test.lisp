@@ -177,7 +177,7 @@
                           ", extract('hour' FROM t.time) AS hour "
                           ", extract('minute' FROM t.time) AS minute "
                           ", extract('microsecond' FROM t.time) AS microsecond "
-                          "FROM (SELECT current_time AS time) AS t")
+                          "FROM (SELECT current_time::time AS time) AS t")
       nil
       (d hour minute microsecond)
     (local-time-duration:duration=
