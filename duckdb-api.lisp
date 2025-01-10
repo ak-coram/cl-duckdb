@@ -84,6 +84,26 @@
     (setf lower (ldb (byte 64 0) value)
           upper (ldb (byte 64 64) value))))
 
+(defconstant +varint-header-size+ 3)
+
+(defcstruct (duckdb-varint :class duckdb-varint-type)
+  (length :uint32)
+  (data :uint8 :count 12))
+
+(defmethod translate-from-foreign (value (type duckdb-varint-type))
+  (with-foreign-slots ((length data) value (:struct duckdb-varint))
+    (let* ((p-base (get-base-pointer length data))
+           (is-negative (zerop (logand (mem-ref p-base :uint8) #x80))))
+      (loop :with result := 0
+            :for i :from (1- length) :downto +varint-header-size+
+            :for j :from 0
+            :for k := (mem-ref p-base :uint8 i)
+            :do (setf result (logior result (ash (if is-negative
+                                                     (logxor k #xFF)
+                                                     k)
+                                                 (* j 8))))
+            :finally (return (if is-negative (- result) result))))))
+
 (defcstruct (duckdb-uuid :class duckdb-uuid-type)
   (lower :uint64)
   (upper :uint64))
@@ -246,6 +266,7 @@
     (:duckdb-varchar '(:struct duckdb-string))
     (:duckdb-hugeint '(:struct duckdb-hugeint))
     (:duckdb-uhugeint '(:struct duckdb-uhugeint))
+    (:duckdb-varint '(:struct duckdb-varint))
     (:duckdb-blob '(:struct duckdb-blob))
     (:duckdb-date '(:struct duckdb-date))
     (:duckdb-time '(:struct duckdb-time))
@@ -738,9 +759,6 @@
 (defcfun duckdb-struct-vector-get-child duckdb-vector
   (vector duckdb-vector)
   (index idx))
-
-(defcfun duckdb-get-int64 :int64
-  (value duckdb-value))
 
 (defcfun duckdb-get-varchar :string
   (value duckdb-value))
