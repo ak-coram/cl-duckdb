@@ -76,9 +76,9 @@ jobs:
           if [ ${{ matrix.cffi }} = 'static' ]; then export CL_DUCKDB_USE_SFFI=t; fi
           export CL_DUCKDB_LIBRARY_PATH="${{ github.workspace }}"
           if [ ${{ matrix.os }} = 'macos-latest' ]; then sudo cp ./libduckdb.dylib /usr/local/lib/; fi
-          ros --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)' --eval '(uiop:quit)'
           ros install neil-lindquist/ci-utils
           asdf-register-project
+          ros --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)' --eval '(ql:quickload :duckdb)' --eval '(duckdb:with-transient-connection (format t "~%DuckDB source_id: ~A~%" (duckdb:get-result (duckdb:q "PRAGMA version") (quote source-id) 0)))' --eval '(uiop:quit)'
           run-fiveam -e t -l duckdb/test :duckdb
 
       - name: Run tests (Windows)
@@ -88,5 +88,5 @@ jobs:
           if [ ${{ matrix.cffi }} = 'static' ]; then export CL_DUCKDB_USE_SFFI=t; fi
           export CL_DUCKDB_LIBRARY_PATH="${{ github.workspace }}"
           pacman --noconfirm -S mingw-w64-x86_64-pkg-config mingw-w64-x86_64-libffi
-          ros --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)' --eval '(uiop:quit)'
+          ros --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)' --eval '(ql:quickload :cffi-grovel)' --eval "(progn (setf cffi-grovel::*cc-flags* (append (list \"-I`cygpath -w /mingw64/include`\") cffi-grovel::*cc-flags*)) (ql:quickload :cffi-libffi))" --eval '(ql:quickload :duckdb)' --eval '(duckdb:with-transient-connection (format t "~%DuckDB source_id: ~A~%" (duckdb:get-result (duckdb:q "PRAGMA version") (quote source-id) 0)))' --eval '(uiop:quit)'
           ros --eval '(ql:quickload :cffi-grovel)' --eval "(progn (setf cffi-grovel::*cc-flags* (append (list \"-I`cygpath -w /mingw64/include`\") cffi-grovel::*cc-flags*)) (ql:quickload :cffi-libffi))" --eval "(progn (ql:quickload :duckdb/test) (uiop:quit (if (uiop:symbol-call :fiveam '#:run! :duckdb) 0 1)))"
