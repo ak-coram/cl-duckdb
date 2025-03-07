@@ -48,8 +48,8 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          aria2c "https://artifacts.duckdb.org/latest/duckdb-binaries-linux.zip"
-          unzip duckdb-binaries-linux.zip -d .
+          aria2c "https://artifacts.duckdb.org/latest/duckdb-binaries-linux-amd64.zip"
+          unzip duckdb-binaries-linux-amd64.zip -d .
           unzip libduckdb-linux-amd64.zip -d .
 
       - name: Install DuckDB (macOS)

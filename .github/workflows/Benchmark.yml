@@ -27,7 +27,7 @@ jobs:
       - name: Install DuckDB
         shell: bash
         run: |
-          if [ ${{ matrix.duckdb }} = 'nightly' ]; then aria2c "https://artifacts.duckdb.org/latest/duckdb-binaries-linux.zip" && unzip duckdb-binaries-linux.zip -d .; else aria2c "https://github.com/duckdb/duckdb/releases/download/v${DUCKDB_VERSION}/libduckdb-linux-amd64.zip"; fi
+          if [ ${{ matrix.duckdb }} = 'nightly' ]; then aria2c "https://artifacts.duckdb.org/latest/duckdb-binaries-linux-amd64.zip" && unzip duckdb-binaries-linux-amd64.zip -d .; else aria2c "https://github.com/duckdb/duckdb/releases/download/v${DUCKDB_VERSION}/libduckdb-linux-amd64.zip"; fi
           unzip libduckdb-linux-amd64.zip -d .
 
       - name: Setup Lisp
