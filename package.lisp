@@ -123,6 +123,7 @@
            #:*threads*
            #:*default-thread-count*
            #:*sql-null-return-value*
+           #:*specialize-result-columns*
            #:with-threads
            #:open-database
            #:close-database

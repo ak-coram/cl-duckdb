@@ -25,3 +25,9 @@
 (defun param-case-to-snake-case (s)
   "Downcase input and replace hyphens with underscores."
   (substitute #\_ #\- (string-downcase s)))
+
+(defun column= (a b)
+  (if (and (stringp a) (stringp b))
+      (string= a b)
+      (string= (snake-case-to-param-case a)
+               (snake-case-to-param-case b))))
