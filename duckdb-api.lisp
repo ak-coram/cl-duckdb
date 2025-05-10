@@ -319,6 +319,9 @@
 (defcfun duckdb-disconnect :void
   (connection (:pointer duckdb-connection)))
 
+(defcfun duckdb-interrupt :void
+  (connection (:pointer duckdb-connection)))
+
 (defcfun duckdb-query duckdb-state
   (connection duckdb-connection)
   (query :string)

@@ -20,6 +20,7 @@
            #:duckdb-close
            #:duckdb-connect
            #:duckdb-disconnect
+           #:duckdb-interrupt
            #:duckdb-query
            #:duckdb-destroy-result
            #:duckdb-column-count

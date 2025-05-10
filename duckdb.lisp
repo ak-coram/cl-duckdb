@@ -251,14 +251,24 @@ The connection and the database are cleaned up after BODY is evaluated."
                  :statement statement
                  :handle p-result))
 
+(defun execute-prepared (p-connection p-statement p-result)
+  "Runs P-STATEMENT and handles interactive interrupt."
+  (restart-bind
+      ((abort (lambda ()
+                (duckdb-api:duckdb-interrupt p-connection)
+                (invoke-restart 'continue))
+              :report-function
+              (lambda (stream)
+                (format stream "Interrupt DuckDB operation."))))
+    (duckdb-api:duckdb-execute-prepared p-statement p-result)))
+
 (defun execute (statement)
   "Runs STATEMENT and returns RESULT instance.
 DESTROY-RESULT must be called on the returned value for resource
 cleanup."
   (let ((connection (connection statement))
         (p-result (foreign-alloc '(:struct duckdb-api:duckdb-result))))
-    (if (eql (duckdb-api:duckdb-execute-prepared (handle statement)
-                                                 p-result)
+    (if (eql (execute-prepared (handle connection) (handle statement) p-result)
              :duckdb-success)
         (make-result connection statement p-result)
         (let ((error-message (duckdb-api:duckdb-result-error p-result)))
@@ -272,8 +282,8 @@ cleanup."
 (defun perform (statement)
   "Same as EXECUTE, but doesn't return any results and needs no cleanup."
   (with-foreign-object (p-result '(:struct duckdb-api:duckdb-result))
-    (if (eql (duckdb-api:duckdb-execute-prepared (handle statement)
-                                                 p-result)
+    (if (eql (execute-prepared (handle (connection statement))
+                               (handle statement) p-result)
              :duckdb-success)
         (duckdb-api:duckdb-destroy-result p-result)
         (let ((error-message (duckdb-api:duckdb-result-error p-result)))
