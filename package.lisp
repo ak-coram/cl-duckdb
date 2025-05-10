@@ -31,6 +31,7 @@
            #:duckdb-column-data
            #:duckdb-nullmask-data
            #:duckdb-p-result-chunk-count
+           #:duckdb-vector-size
            #:duckdb-vector-get-data
            #:duckdb-vector-get-validity
            #:duckdb-list-vector-get-child
@@ -123,6 +124,8 @@
            #:*threads*
            #:*default-thread-count*
            #:*sql-null-return-value*
+           #:*specialize-result-columns*
+           #:*result-column-chunk-alloc-rate*
            #:with-threads
            #:open-database
            #:close-database

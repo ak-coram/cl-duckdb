@@ -88,6 +88,19 @@ value.")
   "This value will be returned for SQL NULL values in query
 results. Defaults to NIL.")
 
+(defvar *specialize-result-columns* nil
+  "The default setting for specializing arrays when returning query results.
+
+NIL: No specialization.
+
+T: All numeric columns are returned as specialized arrays.
+
+List: Numeric columns with the specified types / names are returned as
+specialized arrays.")
+
+(defconstant +vector-size+ (duckdb-api:duckdb-vector-size))
+(defvar *result-column-chunk-alloc-rate* 10)
+
 (defun open-database (&key (path ":memory:") (threads *threads*))
   "Opens and returns database for PATH with \":memory:\" as default.
 
@@ -388,14 +401,41 @@ cleanup."
         :for value := (alexandria:assoc-value entry 'v)
         :collect (cons key value)))
 
+(defun make-result-column (specialize column-type column-name)
+  (let ((element-type (case column-type
+                        (:duckdb-utinyint '(unsigned-byte 8))
+                        (:duckdb-tinyint '(signed-byte 8))
+                        (:duckdb-usmallint '(unsigned-byte 16))
+                        (:duckdb-smallint '(signed-byte 16))
+                        (:duckdb-uinteger '(unsigned-byte 32))
+                        (:duckdb-integer '(signed-byte 32))
+                        (:duckdb-ubigint '(unsigned-byte 64))
+                        (:duckdb-biginteger '(signed-byte 64))
+                        (:duckdb-uhugeint '(unsigned-byte 128))
+                        (:duckdb-hugeint '(signed-byte 128))
+                        (:duckdb-float 'single-float)
+                        (:duckdb-double 'double-float))))
+    (if (and element-type (or (eql specialize t)
+                              (member column-type specialize)
+                              (member column-name specialize
+                                      :test #'column=)))
+        (make-array (list +vector-size+) :adjustable t :fill-pointer 0
+                                         :element-type element-type)
+        (make-array (list +vector-size+) :adjustable t :fill-pointer 0))))
+
 (defun translate-vector
-    (chunk-size vector results &optional sql-null-return-value)
+    (chunk-size vector results-entry
+     &optional sql-null-return-value specialize chunk-alloc-rate)
   (destructuring-bind (vector-type internal-type aux)
       (duckdb-api:get-vector-type vector)
-    (let* ((vector-ffi-type (duckdb-api:get-ffi-type (or internal-type 
-                                                         vector-type)))
+    (let* ((column-type (or internal-type vector-type))
+           (vector-ffi-type (duckdb-api:get-ffi-type column-type))
            (p-data (duckdb-api:duckdb-vector-get-data vector))
            (validity (duckdb-api:duckdb-vector-get-validity vector)))
+      (unless (cdr results-entry)
+        (setf (cdr results-entry) (make-result-column specialize
+                                                      column-type
+                                                      (car results-entry))))
       (loop :for i :below chunk-size
             :for value
               := (if (duckdb-api:duckdb-validity-row-is-valid validity i)
@@ -409,27 +449,39 @@ cleanup."
                          (translate-composite vector-type aux vector i
                                               sql-null-return-value))))
                      sql-null-return-value)
-            :do (vector-push-extend value results chunk-size)
+            :do (vector-push-extend value
+                                    (cdr results-entry)
+                                    (if (eql chunk-size +vector-size+)
+                                        (* +vector-size+ chunk-alloc-rate)
+                                        chunk-size))
             :finally (return vector-type)))))
 
-(defun translate-chunk (result-alist chunk &optional sql-null-return-value)
+(defun translate-chunk
+    (result-alist chunk
+     &optional sql-null-return-value specialize chunk-alloc-rate)
   (let ((column-count (duckdb-api:duckdb-data-chunk-get-column-count chunk))
         (chunk-size (duckdb-api:duckdb-data-chunk-get-size chunk)))
     (values
      (loop :for column-index :below column-count
            :for entry :in result-alist
-           :for vector := (duckdb-api:duckdb-data-chunk-get-vector chunk column-index)
-           :collect (translate-vector chunk-size vector (cdr entry)
-                                      sql-null-return-value))
+           :for vector := (duckdb-api:duckdb-data-chunk-get-vector chunk
+                                                                   column-index)
+           :collect (translate-vector chunk-size vector
+                                      entry
+                                      sql-null-return-value
+                                      specialize
+                                      chunk-alloc-rate))
      chunk-size)))
 
-(defun translate-result (result &optional sql-null-return-value)
+(defun translate-result
+    (result &optional sql-null-return-value specialize chunk-alloc-rate)
   (let* ((p-result (handle result))
          (column-count (duckdb-api:duckdb-column-count p-result))
          (result-alist
            (loop :for column-index :below column-count
-                 :collect (cons (duckdb-api:duckdb-column-name p-result column-index)
-                                (make-array '(0) :adjustable t :fill-pointer 0))))
+                 :collect (cons (duckdb-api:duckdb-column-name p-result
+                                                               column-index)
+                                nil)))
          column-types
          (row-count
            (loop :for n
@@ -446,11 +498,19 @@ cleanup."
                             (multiple-value-bind (types chunk-size)
                                 (translate-chunk result-alist
                                                  chunk
-                                                 sql-null-return-value)
+                                                 sql-null-return-value
+                                                 specialize
+                                                 chunk-alloc-rate)
                               (setf column-types types)
                               chunk-size)))
                  :while n :sum n)))
-    (values result-alist column-types row-count)))
+    (values (loop :for (column . result) :in result-alist
+                  :collect (cons column
+                                 (if result
+                                     (adjust-array result (list row-count))
+                                     (make-array '(0)))))
+            column-types
+            row-count)))
 
 (defun assert-parameter-count (statement values)
   (let ((statement-parameter-count (parameter-count statement))
@@ -581,22 +641,32 @@ binding a bit more concise. It is not intended for any other use."
       :for duckdb-type :in parameter-types
       :do (generate-parameter-binding-dispatch))))
 
-(defun internal-query
-    (connection sql-null-return-value query parameters)
+(defun internal-query (connection
+                       sql-null-return-value
+                       specialize
+                       chunk-alloc-rate
+                       query parameters)
   (with-all-float-traps-masked
       (with-statement (statement query :connection connection)
         (when parameters
           (bind-parameters statement parameters))
         (with-execute (result statement)
-          (translate-result result sql-null-return-value)))))
+          (translate-result result
+                            sql-null-return-value
+                            specialize
+                            chunk-alloc-rate)))))
 
 (defun query (query parameters
               &key (connection *connection*)
                 (sql-null-return-value *sql-null-return-value*)
+                (specialize *specialize-result-columns*)
+                (chunk-alloc-rate *result-column-chunk-alloc-rate*)
                 include-column-types)
   (multiple-value-bind (result-alist column-types row-count)
       (internal-query connection
                       sql-null-return-value
+                      specialize
+                      chunk-alloc-rate
                       query
                       parameters)
     (declare (ignore row-count))
@@ -626,20 +696,15 @@ available. See QUERY for more generic usage."
                           (perform statement)))))
 
 (defun get-result (results column &optional n)
-  (labels ((compare (a b) (string= a (snake-case-to-param-case b))))
-    (let* ((column-data (if (stringp column)
-                            (alexandria:assoc-value results
-                                                    column
-                                                    :test #'string=)
-                            (alexandria:assoc-value results
-                                                    (string-downcase column)
-                                                    :test #'compare)))
-           (result-values (if (listp column-data)
-                              (car column-data)
-                              column-data)))
-      (if n
-          (aref result-values n)
-          result-values))))
+  (let* ((column-data (alexandria:assoc-value results
+                                              column
+                                              :test #'column=))
+         (result-values (if (listp column-data)
+                            (car column-data)
+                            column-data)))
+    (if n
+        (aref result-values n)
+        result-values)))
 
 (defun format-query (query parameters
                      &key (connection *connection*)
@@ -648,6 +713,8 @@ available. See QUERY for more generic usage."
   (multiple-value-bind (results types row-count)
       (internal-query connection
                       sql-null-return-value
+                      nil
+                      1
                       query
                       parameters)
     (declare (ignore types))
