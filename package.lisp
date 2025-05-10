@@ -69,6 +69,7 @@
            #:with-data-chunk
            #:duckdb-validity-row-is-valid
            #:get-vector-type
+           #:get-result-type
            #:duckdb-appender-create
            #:duckdb-appender-error
            #:duckdb-appender-flush
