@@ -388,49 +388,100 @@ cleanup."
         :for value := (alexandria:assoc-value entry 'v)
         :collect (cons key value)))
 
-(defun translate-vector
-    (chunk-size vector results &optional sql-null-return-value)
-  (destructuring-bind (vector-type internal-type aux)
-      (duckdb-api:get-vector-type vector)
-    (let* ((vector-ffi-type (duckdb-api:get-ffi-type (or internal-type 
-                                                         vector-type)))
-           (p-data (duckdb-api:duckdb-vector-get-data vector))
-           (validity (duckdb-api:duckdb-vector-get-validity vector)))
-      (loop :for i :below chunk-size
-            :for value
-              := (if (duckdb-api:duckdb-validity-row-is-valid validity i)
-                     (let ((v (unless (eql vector-ffi-type :void)
-                                (mem-aref p-data vector-ffi-type i))))
-                       (translate-value-case
-                        ((:duckdb-list :duckdb-map)
-                         (translate-composite vector-type aux vector v
-                                              sql-null-return-value))
-                        ((:duckdb-struct :duckdb-union)
-                         (translate-composite vector-type aux vector i
-                                              sql-null-return-value))))
-                     sql-null-return-value)
-            :do (vector-push-extend value results chunk-size)
-            :finally (return vector-type)))))
+(defgeneric translate-vector
+    (vector-type internal-type type-aux sql-null-return-value vector chunk-size))
 
-(defun translate-chunk (result-alist chunk &optional sql-null-return-value)
+(defmethod translate-vector
+    (vector-type internal-type aux sql-null-return-value vector chunk-size)
+  (let* ((vector-ffi-type (duckdb-api:get-ffi-type (or internal-type vector-type)))
+         (p-data (duckdb-api:duckdb-vector-get-data vector))
+         (validity (duckdb-api:duckdb-vector-get-validity vector))
+         (result (make-array chunk-size)))
+    (loop :for i :below chunk-size
+          :for value
+            := (if (duckdb-api:duckdb-validity-row-is-valid validity i)
+                   (let ((v (unless (eql vector-ffi-type :void)
+                              (mem-aref p-data vector-ffi-type i))))
+                     (translate-value-case
+                      ((:duckdb-list :duckdb-map)
+                       (translate-composite vector-type aux vector v
+                                            sql-null-return-value))
+                      ((:duckdb-struct :duckdb-union)
+                       (translate-composite vector-type aux vector i
+                                            sql-null-return-value))))
+                   sql-null-return-value)
+          :do (setf (aref result i) value))
+    result))
+
+(defmacro define-specialized-translate-vector (vector-type array-element-type)
+  `(defmethod translate-vector
+       ((vector-type (eql ,vector-type)) internal-type aux
+        sql-null-return-value vector chunk-size)
+     (declare (ignore internal-type aux sql-null-return-value))
+     (let ((validity (duckdb-api:duckdb-vector-get-validity vector)))
+       (if (cffi:null-pointer-p validity)
+           (let ((result (make-array chunk-size :element-type ',array-element-type))
+                 (p-data (duckdb-api:duckdb-vector-get-data vector)))
+             (declare (optimize speed))
+             (loop :for i :below chunk-size
+                   :do (setf (aref result i)
+                             (cffi:mem-aref p-data ',(duckdb-api:get-ffi-type vector-type) i)))
+             result)
+           (call-next-method)))))
+
+(define-specialized-translate-vector :duckdb-boolean boolean)
+(define-specialized-translate-vector :duckdb-tinyint (signed-byte 8))
+(define-specialized-translate-vector :duckdb-smallint (signed-byte 16))
+(define-specialized-translate-vector :duckdb-integer (signed-byte 32))
+(define-specialized-translate-vector :duckdb-bigint (signed-byte 64))
+(define-specialized-translate-vector :duckdb-utinyint (unsigned-byte 8))
+(define-specialized-translate-vector :duckdb-usmallint (unsigned-byte 16))
+(define-specialized-translate-vector :duckdb-uinteger (unsigned-byte 32))
+(define-specialized-translate-vector :duckdb-ubigint (unsigned-byte 64))
+(define-specialized-translate-vector :duckdb-float single-float)
+(define-specialized-translate-vector :duckdb-double double-float)
+
+(defgeneric aggregate-vectors
+    (vector-type internal-type type-aux sql-null-return-value results))
+
+(defmethod aggregate-vectors (vector-type internal-type type-aux sql-null-return-value results)
+  (declare (ignore vector-type internal-type type-aux sql-null-return-value))
+  (if results
+      (if (cdr results)
+          (let ((element-type (array-element-type (car results))))
+            ;; If any array is unspecialized, the result should also be unspecialized
+            (loop :for vector :in (cdr results)
+                  :for type := (array-element-type vector)
+                  :do (setq element-type
+                            (if (equal type element-type)
+                                element-type
+                                t)))
+            (apply #'concatenate `(vector ,element-type) results))
+          ;; No need to concatenate if there's only one result vector
+          (car results))
+      (vector)))
+
+(defun translate-chunk (result-alist column-types chunk sql-null-return-value)
   (let ((column-count (duckdb-api:duckdb-data-chunk-get-column-count chunk))
         (chunk-size (duckdb-api:duckdb-data-chunk-get-size chunk)))
-    (values
-     (loop :for column-index :below column-count
-           :for entry :in result-alist
-           :for vector := (duckdb-api:duckdb-data-chunk-get-vector chunk column-index)
-           :collect (translate-vector chunk-size vector (cdr entry)
-                                      sql-null-return-value))
-     chunk-size)))
+    (loop :for column-index :below column-count
+          :for entry :in result-alist
+          :for (vector-type internal-type aux) :in column-types
+          :for vector := (duckdb-api:duckdb-data-chunk-get-vector chunk column-index)
+          :do (push (translate-vector vector-type internal-type aux
+                                      sql-null-return-value vector chunk-size)
+                    (cdr entry)))
+    chunk-size))
 
 (defun translate-result (result &optional sql-null-return-value)
   (let* ((p-result (handle result))
          (column-count (duckdb-api:duckdb-column-count p-result))
          (result-alist
            (loop :for column-index :below column-count
-                 :collect (cons (duckdb-api:duckdb-column-name p-result column-index)
-                                (make-array '(0) :adjustable t :fill-pointer 0))))
-         column-types
+                 :collect (list (duckdb-api:duckdb-column-name p-result column-index))))
+         (column-types
+           (loop :for column-index :below column-count
+                 :collect (duckdb-api:get-result-type p-result column-index)))
          (row-count
            (loop :for n
                    := (duckdb-api:with-data-chunk (chunk p-result)
@@ -443,14 +494,15 @@ cleanup."
                                      :database (database (connection result))
                                      :statement (statement result)
                                      :error-message error-message))
-                            (multiple-value-bind (types chunk-size)
-                                (translate-chunk result-alist
-                                                 chunk
-                                                 sql-null-return-value)
-                              (setf column-types types)
-                              chunk-size)))
+                            (translate-chunk result-alist column-types chunk sql-null-return-value)))
                  :while n :sum n)))
-    (values result-alist column-types row-count)))
+    (values (loop :for (column-name . results) :in result-alist
+                  :for (vector-type internal-type aux) :in column-types
+                  :collect (cons column-name
+                                 (aggregate-vectors vector-type internal-type aux
+                                                    sql-null-return-value
+                                                    (nreverse results))))
+            column-types row-count)))
 
 (defun assert-parameter-count (statement values)
   (let ((statement-parameter-count (parameter-count statement))

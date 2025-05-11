@@ -347,6 +347,10 @@
   (result p-duckdb-result)
   (col idx))
 
+(defcfun duckdb-column-logical-type (duckdb-logical-type)
+  (result p-duckdb-result)
+  (col idx))
+
 (defcfun duckdb-column-data (:pointer :void)
   (result p-duckdb-result)
   (col idx))
@@ -476,6 +480,10 @@
 
 (defun get-vector-type (vector)
   (with-logical-type (logical-type (duckdb-vector-get-column-type vector))
+    (resolve-logical-type logical-type)))
+
+(defun get-result-type (result column-index)
+  (with-logical-type (logical-type (duckdb-column-logical-type result column-index))
     (resolve-logical-type logical-type)))
 
 (defcfun duckdb-vector-get-data (:pointer :void)
