@@ -294,12 +294,12 @@ cleanup."
        (destroy-result ,result-var))))
 
 (defmacro translate-value-case (&rest cases)
-  `(case vector-type
-     (:duckdb-decimal (let ((decimal-scale aux))
-                        (* v (expt 10 (- decimal-scale)))))
-     (:duckdb-enum (let ((enum-alist aux))
-                     (alexandria:assoc-value enum-alist v)))
-     (:duckdb-bit
+  `(typecase vector-type
+     (duckdb-api:duckdb-logical-decimal
+      (* v (expt 10 (- (duckdb-api:duckdb-logical-decimal-scale vector-type)))))
+     (duckdb-api:duckdb-logical-enum
+      (alexandria:assoc-value (duckdb-api:duckdb-logical-enum-alist vector-type) v))
+     ((eql :duckdb-bit)
       (loop :with unused-bit-count := (aref v 0)
             :with octet-count := (1- (length v))
             :with bit-count := (- (* octet-count 8) unused-bit-count)
@@ -314,72 +314,74 @@ cleanup."
      ,@cases
      (t v)))
 
-(defgeneric translate-composite
-    (type aux vector v &optional sql-null-return-value))
+(defgeneric translate-composite (type vector v &optional sql-null-return-value))
 
-(defmethod translate-composite ((type (eql :duckdb-list)) child-type vector v
-                                &optional sql-null-return-value)
+(defmethod translate-composite ((type duckdb-api:duckdb-logical-list)
+                                vector v &optional sql-null-return-value)
   (destructuring-bind (offset length) v
     (loop :with child-vector := (duckdb-api:duckdb-list-vector-get-child vector)
           :with child-validity := (duckdb-api:duckdb-vector-get-validity child-vector)
           :with child-data := (duckdb-api:duckdb-vector-get-data child-vector)
-          :with (vector-type internal-type aux) := child-type
-          :with vector-ffi-type := (duckdb-api:get-ffi-type (or internal-type
-                                                                vector-type))
+          :with vector-type := (duckdb-api:duckdb-logical-list-child type)
+          :with vector-ffi-type := (duckdb-api:get-ffi-type vector-type)
           :for i :from offset :below (+ offset length)
           :for is-valid := (duckdb-api:duckdb-validity-row-is-valid child-validity i)
           :for v := (unless (or (not is-valid) (eql vector-ffi-type :void))
                       (mem-aref child-data vector-ffi-type i))
           :collect (if is-valid
                        (translate-value-case
-                        ((:duckdb-list :duckdb-map)
-                         (translate-composite vector-type aux child-vector v
+                        ((or duckdb-api:duckdb-logical-list duckdb-api:duckdb-logical-map)
+                         (translate-composite vector-type child-vector v
                                               sql-null-return-value))
-                        ((:duckdb-struct :duckdb-union)
-                         (translate-composite vector-type aux child-vector i
+                        ((or duckdb-api:duckdb-logical-struct duckdb-api:duckdb-logical-union)
+                         (translate-composite vector-type child-vector i
                                               sql-null-return-value)))
                        sql-null-return-value))))
 
-(defmethod translate-composite ((type (eql :duckdb-struct)) child-types vector i
-                                &optional sql-null-return-value)
+(defmethod translate-composite ((type duckdb-api:duckdb-logical-struct)
+                                vector i &optional sql-null-return-value)
   (loop :for child-index :from 0
-        :for (name vector-type internal-type aux) :in child-types
+        :for (name . vector-type) :in (duckdb-api:duckdb-logical-struct-fields type)
         :for child-vector := (duckdb-api:duckdb-struct-vector-get-child vector
                                                                         child-index)
         :for child-validity := (duckdb-api:duckdb-vector-get-validity child-vector)
         :for child-data := (duckdb-api:duckdb-vector-get-data child-vector)
-        :for vector-ffi-type := (duckdb-api:get-ffi-type (or internal-type
-                                                             vector-type))
+        :for vector-ffi-type := (duckdb-api:get-ffi-type vector-type)
         :for is-valid := (duckdb-api:duckdb-validity-row-is-valid child-validity i)
         :for v := (unless (or (not is-valid) (eql vector-ffi-type :void))
                     (mem-aref child-data vector-ffi-type i))
         :collect (cons name
                        (if is-valid
                            (translate-value-case
-                            ((:duckdb-list :duckdb-map)
-                             (translate-composite vector-type aux child-vector v
+                            ((or duckdb-api:duckdb-logical-list duckdb-api:duckdb-logical-map)
+                             (translate-composite vector-type child-vector v
                                                   sql-null-return-value))
-                            ((:duckdb-struct :duckdb-union)
-                             (translate-composite vector-type aux child-vector i
+                            ((or duckdb-api:duckdb-logical-struct duckdb-api:duckdb-logical-union)
+                             (translate-composite vector-type child-vector i
                                                   sql-null-return-value)))
                            sql-null-return-value))))
 
-(defmethod translate-composite ((type (eql :duckdb-union)) child-types vector i
-                                &optional sql-null-return-value)
-  (let* ((result (translate-composite :duckdb-struct
-                                      ;; add value selector tag to struct members
-                                      (cons '("" :duckdb-utinyint nil nil)
-                                            child-types)
+(defmethod translate-composite ((type duckdb-api:duckdb-logical-union)
+                                vector i &optional sql-null-return-value)
+  (let* ((result (translate-composite (duckdb-api::make-duckdb-logical-struct
+                                       :fields
+                                       ;; add value selector tag to struct members
+                                       (cons '("" . :duckdb-utinyint)
+                                             (duckdb-api:duckdb-logical-union-fields type)))
                                       vector i sql-null-return-value))
          (value-index (1+ (cdar result))))
     (cdr (nth value-index result))))
 
-(defmethod translate-composite ((type (eql :duckdb-map)) child-types vector v
+(defmethod translate-composite ((type duckdb-api:duckdb-logical-map) vector v
                                 &optional sql-null-return-value)
-  (loop :with entries
+  (loop :with child-types := (duckdb-api:duckdb-logical-map-fields type)
+        :with entries
           := (translate-composite
-              :duckdb-list `(:duckdb-struct nil ((k . ,(car child-types))
-                                                 (v . ,(cadr child-types))))
+              (duckdb-api::make-duckdb-logical-list
+               :child
+               (duckdb-api::make-duckdb-logical-struct
+                :fields `((k . ,(car child-types))
+                          (v . ,(cadr child-types)))))
               vector
               v
               sql-null-return-value)
@@ -388,12 +390,10 @@ cleanup."
         :for value := (alexandria:assoc-value entry 'v)
         :collect (cons key value)))
 
-(defgeneric translate-vector
-    (vector-type internal-type type-aux sql-null-return-value vector chunk-size))
+(defgeneric translate-vector (vector-type sql-null-return-value vector chunk-size))
 
-(defmethod translate-vector
-    (vector-type internal-type aux sql-null-return-value vector chunk-size)
-  (let* ((vector-ffi-type (duckdb-api:get-ffi-type (or internal-type vector-type)))
+(defmethod translate-vector (vector-type sql-null-return-value vector chunk-size)
+  (let* ((vector-ffi-type (duckdb-api:get-ffi-type vector-type))
          (p-data (duckdb-api:duckdb-vector-get-data vector))
          (validity (duckdb-api:duckdb-vector-get-validity vector))
          (result (make-array chunk-size)))
@@ -403,11 +403,11 @@ cleanup."
                    (let ((v (unless (eql vector-ffi-type :void)
                               (mem-aref p-data vector-ffi-type i))))
                      (translate-value-case
-                      ((:duckdb-list :duckdb-map)
-                       (translate-composite vector-type aux vector v
+                      ((or duckdb-api:duckdb-logical-list duckdb-api:duckdb-logical-map)
+                       (translate-composite vector-type vector v
                                             sql-null-return-value))
-                      ((:duckdb-struct :duckdb-union)
-                       (translate-composite vector-type aux vector i
+                      ((or duckdb-api:duckdb-logical-struct duckdb-api:duckdb-logical-union)
+                       (translate-composite vector-type vector i
                                             sql-null-return-value))))
                    sql-null-return-value)
           :do (setf (aref result i) value))
@@ -415,9 +415,8 @@ cleanup."
 
 (defmacro define-specialized-translate-vector (vector-type array-element-type)
   `(defmethod translate-vector
-       ((vector-type (eql ,vector-type)) internal-type aux
-        sql-null-return-value vector chunk-size)
-     (declare (ignore internal-type aux sql-null-return-value))
+       ((vector-type (eql ,vector-type)) sql-null-return-value vector chunk-size)
+     (declare (ignore sql-null-return-value))
      (let ((validity (duckdb-api:duckdb-vector-get-validity vector)))
        (if (cffi:null-pointer-p validity)
            (let ((result (make-array chunk-size :element-type ',array-element-type))
@@ -441,11 +440,10 @@ cleanup."
 (define-specialized-translate-vector :duckdb-float single-float)
 (define-specialized-translate-vector :duckdb-double double-float)
 
-(defgeneric aggregate-vectors
-    (vector-type internal-type type-aux sql-null-return-value results))
+(defgeneric aggregate-vectors (vector-type sql-null-return-value results))
 
-(defmethod aggregate-vectors (vector-type internal-type type-aux sql-null-return-value results)
-  (declare (ignore vector-type internal-type type-aux sql-null-return-value))
+(defmethod aggregate-vectors (vector-type sql-null-return-value results)
+  (declare (ignore vector-type sql-null-return-value))
   (if results
       (if (cdr results)
           (let ((element-type (array-element-type (car results))))
@@ -466,10 +464,9 @@ cleanup."
         (chunk-size (duckdb-api:duckdb-data-chunk-get-size chunk)))
     (loop :for column-index :below column-count
           :for entry :in result-alist
-          :for (vector-type internal-type aux) :in column-types
+          :for vector-type :in column-types
           :for vector := (duckdb-api:duckdb-data-chunk-get-vector chunk column-index)
-          :do (push (translate-vector vector-type internal-type aux
-                                      sql-null-return-value vector chunk-size)
+          :do (push (translate-vector vector-type sql-null-return-value vector chunk-size)
                     (cdr entry)))
     chunk-size))
 
@@ -497,10 +494,9 @@ cleanup."
                             (translate-chunk result-alist column-types chunk sql-null-return-value)))
                  :while n :sum n)))
     (values (loop :for (column-name . results) :in result-alist
-                  :for (vector-type internal-type aux) :in column-types
+                  :for vector-type :in column-types
                   :collect (cons column-name
-                                 (aggregate-vectors vector-type internal-type aux
-                                                    sql-null-return-value
+                                 (aggregate-vectors vector-type sql-null-return-value
                                                     (nreverse results))))
             column-types row-count)))
 

@@ -251,37 +251,47 @@
   (:duckdb-sqlnull 36))
 
 (defun get-ffi-type (duckdb-type)
-  (ecase duckdb-type
-    (:duckdb-boolean :bool)
-    (:duckdb-tinyint :int8)
-    (:duckdb-smallint :int16)
-    (:duckdb-integer :int32)
-    (:duckdb-bigint :int64)
-    (:duckdb-utinyint :uint8)
-    (:duckdb-usmallint :uint16)
-    (:duckdb-uinteger :uint32)
-    (:duckdb-ubigint :uint64)
-    (:duckdb-float :float)
-    (:duckdb-double :double)
-    (:duckdb-varchar '(:struct duckdb-string))
-    (:duckdb-hugeint '(:struct duckdb-hugeint))
-    (:duckdb-uhugeint '(:struct duckdb-uhugeint))
-    (:duckdb-varint '(:struct duckdb-varint))
-    (:duckdb-blob '(:struct duckdb-blob))
-    (:duckdb-date '(:struct duckdb-date))
-    (:duckdb-time '(:struct duckdb-time))
-    (:duckdb-timestamp '(:struct duckdb-timestamp))
-    (:duckdb-timestamp-s '(:struct duckdb-timestamp))
-    (:duckdb-timestamp-ms '(:struct duckdb-timestamp))
-    (:duckdb-timestamp-ns '(:struct duckdb-timestamp))
-    (:duckdb-interval '(:struct duckdb-interval))
-    (:duckdb-uuid '(:struct duckdb-uuid))
-    (:duckdb-list '(:struct duckdb-list))
-    (:duckdb-struct :void)
-    (:duckdb-map '(:struct duckdb-list))
-    (:duckdb-union :void)
-    (:duckdb-bit '(:struct duckdb-blob))
-    (:duckdb-timestamp-tz '(:struct duckdb-timestamp))))
+  (etypecase duckdb-type
+    (duckdb-logical-decimal
+     (get-ffi-type (duckdb-logical-decimal-internal duckdb-type)))
+    (duckdb-logical-enum
+     (get-ffi-type (duckdb-logical-enum-internal duckdb-type)))
+    (duckdb-logical-list '(:struct duckdb-list))
+    (duckdb-logical-struct :void)
+    (duckdb-logical-map '(:struct duckdb-list))
+    (duckdb-logical-union :void)
+    (keyword
+     (ecase duckdb-type
+       (:duckdb-boolean :bool)
+       (:duckdb-tinyint :int8)
+       (:duckdb-smallint :int16)
+       (:duckdb-integer :int32)
+       (:duckdb-bigint :int64)
+       (:duckdb-utinyint :uint8)
+       (:duckdb-usmallint :uint16)
+       (:duckdb-uinteger :uint32)
+       (:duckdb-ubigint :uint64)
+       (:duckdb-float :float)
+       (:duckdb-double :double)
+       (:duckdb-varchar '(:struct duckdb-string))
+       (:duckdb-hugeint '(:struct duckdb-hugeint))
+       (:duckdb-uhugeint '(:struct duckdb-uhugeint))
+       (:duckdb-varint '(:struct duckdb-varint))
+       (:duckdb-blob '(:struct duckdb-blob))
+       (:duckdb-date '(:struct duckdb-date))
+       (:duckdb-time '(:struct duckdb-time))
+       (:duckdb-timestamp '(:struct duckdb-timestamp))
+       (:duckdb-timestamp-s '(:struct duckdb-timestamp))
+       (:duckdb-timestamp-ms '(:struct duckdb-timestamp))
+       (:duckdb-timestamp-ns '(:struct duckdb-timestamp))
+       (:duckdb-interval '(:struct duckdb-interval))
+       (:duckdb-uuid '(:struct duckdb-uuid))
+       (:duckdb-list '(:struct duckdb-list))
+       (:duckdb-struct :void)
+       (:duckdb-map '(:struct duckdb-list))
+       (:duckdb-union :void)
+       (:duckdb-bit '(:struct duckdb-blob))
+       (:duckdb-timestamp-tz '(:struct duckdb-timestamp))))))
 
 (defcstruct duckdb-column)
 
@@ -437,20 +447,33 @@
          (setf (mem-ref p-type 'duckdb-logical-type) ,logical-type-var)
          (duckdb-destroy-logical-type p-type)))))
 
+(defstruct duckdb-logical-decimal (internal) (scale))
+
+(defstruct duckdb-logical-enum (internal) (alist))
+
+(defstruct duckdb-logical-list (child))
+
+(defstruct duckdb-logical-struct (fields))
+
+(defstruct duckdb-logical-union (fields))
+
+(defstruct duckdb-logical-map (fields))
+
 (defun resolve-logical-type (logical-type)
   (let ((type (duckdb-get-type-id logical-type)))
     (case type
-      (:duckdb-decimal (list type
-                             (duckdb-decimal-internal-type logical-type)
-                             (duckdb-decimal-scale logical-type)))
-      (:duckdb-enum (list type
-                          (duckdb-enum-internal-type logical-type)
-                          (get-enum-alist logical-type)))
+      (:duckdb-decimal
+       (make-duckdb-logical-decimal
+        :internal (duckdb-decimal-internal-type logical-type)
+        :scale (duckdb-decimal-scale logical-type)))
+      (:duckdb-enum
+       (make-duckdb-logical-enum
+        :internal (duckdb-enum-internal-type logical-type)
+        :alist (get-enum-alist logical-type)))
       (:duckdb-list
-       (with-logical-type (child-type (duckdb-list-type-child-type logical-type))
-         (list type
-               nil
-               (resolve-logical-type child-type))))
+       (make-duckdb-logical-list
+        :child (with-logical-type (child-type (duckdb-list-type-child-type logical-type))
+                 (resolve-logical-type child-type))))
       (:duckdb-struct
        (loop :for i :below (duckdb-struct-type-child-count logical-type)
              :collect
@@ -459,7 +482,7 @@
                  (cons (foreign-string-to-lisp p-field-name)
                        (resolve-logical-type field-type))))
                :into fields
-             :finally (return (list type nil fields))))
+             :finally (return (make-duckdb-logical-struct :fields fields))))
       (:duckdb-union
        (loop :for i :below (duckdb-union-type-member-count logical-type)
              :collect
@@ -468,15 +491,14 @@
                  (cons (foreign-string-to-lisp p-field-name)
                        (resolve-logical-type field-type))))
                :into fields
-             :finally (return (list type nil fields))))
+             :finally (return (make-duckdb-logical-union :fields fields))))
       (:duckdb-map
-       (list type
-             nil
-             (with-logical-type (key-type (duckdb-map-type-key-type logical-type))
-               (with-logical-type (value-type (duckdb-map-type-value-type logical-type))
-                 (list (resolve-logical-type key-type)
-                       (resolve-logical-type value-type))))))
-      (t (list type nil nil)))))
+       (make-duckdb-logical-map
+        :fields (with-logical-type (key-type (duckdb-map-type-key-type logical-type))
+                  (with-logical-type (value-type (duckdb-map-type-value-type logical-type))
+                    (list (resolve-logical-type key-type)
+                          (resolve-logical-type value-type))))))
+      (t type))))
 
 (defun get-vector-type (vector)
   (with-logical-type (logical-type (duckdb-vector-get-column-type vector))
