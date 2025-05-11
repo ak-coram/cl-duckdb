@@ -360,7 +360,7 @@ cleanup."
                              (translate-composite vector-type aux child-vector v
                                                   sql-null-return-value))
                             ((:duckdb-struct :duckdb-union)
-                             (translate-composite vector-type aux child-vector 0
+                             (translate-composite vector-type aux child-vector i
                                                   sql-null-return-value)))
                            sql-null-return-value))))
 
