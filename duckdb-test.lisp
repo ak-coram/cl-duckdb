@@ -209,6 +209,15 @@
           (equalp '(("x" . 4) ("y" . 5) ("z" . 6))
                   (ddb:get-result result 'value 1))))))
 
+(test query-nested-struct
+  (ddb:with-transient-connection
+    (ddb:run "CREATE TABLE tmp (x STRUCT(x STRUCT(x INTEGER)));"
+             (ddb:concat "INSERT INTO tmp VALUES ({'x':{'x':1}}),"
+                         "({'x':{'x':2}}),"
+                         "({'x':{'x':3}})"))
+    (is (equalp '(("x" . #((("x" ("x" . 1))) (("x" ("x" . 2))) (("x" ("x" . 3))))))
+                (ddb:query "SELECT * FROM tmp" nil)))))
+
 (test query-union
   (ddb:with-transient-connection
     (ddb:run "CREATE TABLE tbl1(u UNION(num INT, str VARCHAR));"
