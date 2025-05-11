@@ -69,6 +69,20 @@
            #:with-data-chunk
            #:duckdb-validity-row-is-valid
            #:get-vector-type
+           #:duckdb-logical-decimal
+           #:duckdb-logical-decimal-internal
+           #:duckdb-logical-decimal-scale
+           #:duckdb-logical-enum
+           #:duckdb-logical-enum-internal
+           #:duckdb-logical-enum-alist
+           #:duckdb-logical-list
+           #:duckdb-logical-list-child
+           #:duckdb-logical-struct
+           #:duckdb-logical-struct-fields
+           #:duckdb-logical-union
+           #:duckdb-logical-union-fields
+           #:duckdb-logical-map
+           #:duckdb-logical-map-fields
            #:get-result-type
            #:duckdb-appender-create
            #:duckdb-appender-error
