@@ -293,140 +293,124 @@ cleanup."
      (unwind-protect (progn ,@body)
        (destroy-result ,result-var))))
 
-(defmacro translate-value-case (&rest cases)
-  `(typecase vector-type
-     (duckdb-api:duckdb-logical-decimal
-      (* v (expt 10 (- (duckdb-api:duckdb-logical-decimal-scale vector-type)))))
-     (duckdb-api:duckdb-logical-enum
-      (alexandria:assoc-value (duckdb-api:duckdb-logical-enum-alist vector-type) v))
-     ((eql :duckdb-bit)
-      (loop :with unused-bit-count := (aref v 0)
-            :with octet-count := (1- (length v))
-            :with bit-count := (- (* octet-count 8) unused-bit-count)
-            :with bits := (make-array (list bit-count) :element-type 'bit)
-            :for i :below bit-count
-            :for j := (+ i unused-bit-count)
-            :for octet-index := (floor j 8)
-            :for octet := (aref v (1+ octet-index))
-            :for octet-bit-index := (- 7 (mod j 8))
-            :do (setf (aref bits i) (ldb (byte 1 octet-bit-index) octet))
-            :finally (return bits)))
-     ,@cases
-     (t v)))
+(declaim (inline validity-row-is-valid))
 
-(defgeneric translate-composite (type vector v &optional sql-null-return-value))
+(defun validity-row-is-valid (validity i)
+  (declare (cffi:foreign-pointer validity)
+           ((integer 0 #.array-dimension-limit) i)
+           (optimize speed))
+  (oddp (ash (cffi:mem-aref validity :uint8 (ash i -3))
+             (- (ldb (byte 3 0) i)))))
 
-(defmethod translate-composite ((type duckdb-api:duckdb-logical-list)
-                                vector v &optional sql-null-return-value)
-  (destructuring-bind (offset length) v
-    (loop :with child-vector := (duckdb-api:duckdb-list-vector-get-child vector)
-          :with child-validity := (duckdb-api:duckdb-vector-get-validity child-vector)
-          :with child-data := (duckdb-api:duckdb-vector-get-data child-vector)
-          :with vector-type := (duckdb-api:duckdb-logical-list-child type)
-          :with vector-ffi-type := (duckdb-api:get-ffi-type vector-type)
-          :for i :from offset :below (+ offset length)
-          :for is-valid := (duckdb-api:duckdb-validity-row-is-valid child-validity i)
-          :for v := (unless (or (not is-valid) (eql vector-ffi-type :void))
-                      (mem-aref child-data vector-ffi-type i))
-          :collect (if is-valid
-                       (translate-value-case
-                        ((or duckdb-api:duckdb-logical-list duckdb-api:duckdb-logical-map)
-                         (translate-composite vector-type child-vector v
-                                              sql-null-return-value))
-                        ((or duckdb-api:duckdb-logical-struct duckdb-api:duckdb-logical-union)
-                         (translate-composite vector-type child-vector i
-                                              sql-null-return-value)))
-                       sql-null-return-value))))
+(defmacro do-specialized-vector
+    ((index-var chunk-size)
+     (array-element-type sql-null-return-value validity)
+     &body body)
+  "Iterate with INDEX-VAR from 0 below CHUNK-SIZE and collect into a Lisp vector.
 
-(defmethod translate-composite ((type duckdb-api:duckdb-logical-struct)
-                                vector i &optional sql-null-return-value)
-  (loop :for child-index :from 0
-        :for (name . vector-type) :in (duckdb-api:duckdb-logical-struct-fields type)
-        :for child-vector := (duckdb-api:duckdb-struct-vector-get-child vector
-                                                                        child-index)
-        :for child-validity := (duckdb-api:duckdb-vector-get-validity child-vector)
-        :for child-data := (duckdb-api:duckdb-vector-get-data child-vector)
-        :for vector-ffi-type := (duckdb-api:get-ffi-type vector-type)
-        :for is-valid := (duckdb-api:duckdb-validity-row-is-valid child-validity i)
-        :for v := (unless (or (not is-valid) (eql vector-ffi-type :void))
-                    (mem-aref child-data vector-ffi-type i))
-        :collect (cons name
-                       (if is-valid
-                           (translate-value-case
-                            ((or duckdb-api:duckdb-logical-list duckdb-api:duckdb-logical-map)
-                             (translate-composite vector-type child-vector v
-                                                  sql-null-return-value))
-                            ((or duckdb-api:duckdb-logical-struct duckdb-api:duckdb-logical-union)
-                             (translate-composite vector-type child-vector i
-                                                  sql-null-return-value)))
-                           sql-null-return-value))))
+The result is masked according to VALIDITY. Try to specialize the result vector
+with ARRAY-ELEMENT-TYPE. Fallback to T if SQL-NULL-RETURN-VALUE is not of
+ARRAY-ELEMENT-TYPE. ARRAY-ELEMENT-TYPE is not evaluated."
+  `(cond ((cffi:null-pointer-p ,validity)
+          (let ((result (make-array ,chunk-size :element-type ',array-element-type)))
+            #+nil (declare (optimize speed))
+            (loop :for ,index-var :below ,chunk-size
+                  :do (setf (aref result ,index-var)
+                            (locally ,@body)))
+            result))
+         ;; We can still specialize if there is a validity mask, but
+         ;; SQL-NULL-RETURN-VALUE happens to be of ARRAY-ELEMENT-TYPE.
+         ;; This case is only needed if ARRAY-ELEMENT-TYPE is not T.
+         ,@ (unless (eql array-element-type t)
+              `(((typep ,sql-null-return-value ',array-element-type)
+                 (let ((result (make-array ,chunk-size :element-type ',array-element-type)))
+                   (loop :for ,index-var :below ,chunk-size
+                         :do (setf (aref result i)
+                                   (if (validity-row-is-valid ,validity ,index-var)
+                                       (locally ,@body)
+                                       ,sql-null-return-value)))
+                   result))))
+         (t (let ((result (make-array ,chunk-size)))
+              (loop :for ,index-var :below ,chunk-size
+                    :do (setf (aref result ,index-var)
+                              (if (validity-row-is-valid ,validity ,index-var)
+                                  (locally ,@body)
+                                  ,sql-null-return-value)))
+              result))))
 
-(defmethod translate-composite ((type duckdb-api:duckdb-logical-union)
-                                vector i &optional sql-null-return-value)
-  (let* ((result (translate-composite (duckdb-api::make-duckdb-logical-struct
-                                       :fields
-                                       ;; add value selector tag to struct members
-                                       (cons '("" . :duckdb-utinyint)
-                                             (duckdb-api:duckdb-logical-union-fields type)))
-                                      vector i sql-null-return-value))
-         (value-index (1+ (cdar result))))
-    (cdr (nth value-index result))))
+(defgeneric translate-vector (vector-type sql-null-return-value vector chunk-size)
+  (:documentation
+   "Translate a DuckDB VECTOR of VECTOR-TYPE into a Lisp vector.
 
-(defmethod translate-composite ((type duckdb-api:duckdb-logical-map) vector v
-                                &optional sql-null-return-value)
-  (loop :with child-types := (duckdb-api:duckdb-logical-map-fields type)
-        :with entries
-          := (translate-composite
-              (duckdb-api::make-duckdb-logical-list
-               :child
-               (duckdb-api::make-duckdb-logical-struct
-                :fields `((k . ,(car child-types))
-                          (v . ,(cadr child-types)))))
-              vector
-              v
-              sql-null-return-value)
-        :for entry :in entries
-        :for key := (alexandria:assoc-value entry 'k)
-        :for value := (alexandria:assoc-value entry 'v)
-        :collect (cons key value)))
+The results are passed to `aggregate-vectors'."))
 
-(defgeneric translate-vector (vector-type sql-null-return-value vector chunk-size))
+(defmethod translate-vector ((type duckdb-api:duckdb-logical-list)
+                             sql-null-return-value vector chunk-size)
+  (let ((child (translate-vector
+                (duckdb-api:duckdb-logical-list-child type) sql-null-return-value
+                (duckdb-api:duckdb-list-vector-get-child vector)
+                (duckdb-api:duckdb-list-vector-get-size vector)))
+        (p-data (duckdb-api:duckdb-vector-get-data vector))
+        (validity (duckdb-api:duckdb-vector-get-validity vector)))
+    (do-specialized-vector (i chunk-size) (t sql-null-return-value validity)
+      (destructuring-bind (offset length)
+          (cffi:mem-aref p-data '(:struct duckdb-api::duckdb-list) i)
+        (loop :for j :from offset :below (+ offset length)
+              :collect (aref child j))))))
 
-(defmethod translate-vector (vector-type sql-null-return-value vector chunk-size)
-  (let* ((vector-ffi-type (duckdb-api:get-ffi-type vector-type))
-         (p-data (duckdb-api:duckdb-vector-get-data vector))
-         (validity (duckdb-api:duckdb-vector-get-validity vector))
-         (result (make-array chunk-size)))
-    (loop :for i :below chunk-size
-          :for value
-            := (if (duckdb-api:duckdb-validity-row-is-valid validity i)
-                   (let ((v (unless (eql vector-ffi-type :void)
-                              (mem-aref p-data vector-ffi-type i))))
-                     (translate-value-case
-                      ((or duckdb-api:duckdb-logical-list duckdb-api:duckdb-logical-map)
-                       (translate-composite vector-type vector v
-                                            sql-null-return-value))
-                      ((or duckdb-api:duckdb-logical-struct duckdb-api:duckdb-logical-union)
-                       (translate-composite vector-type vector i
-                                            sql-null-return-value))))
-                   sql-null-return-value)
-          :do (setf (aref result i) value))
-    result))
+(defmethod translate-vector ((type duckdb-api:duckdb-logical-struct)
+                             sql-null-return-value vector chunk-size)
+  (let* ((validity (duckdb-api:duckdb-vector-get-validity vector))
+         (child-results
+           (loop :for child-index :from 0
+                 :for (name . vector-type)
+                   :in (duckdb-api:duckdb-logical-struct-fields type)
+                 :for child-vector
+                   := (duckdb-api:duckdb-struct-vector-get-child vector child-index)
+                 :collect
+                 (cons name (translate-vector vector-type sql-null-return-value
+                                              child-vector chunk-size)))))
+    (do-specialized-vector (i chunk-size) (t sql-null-return-value validity)
+      (loop :for (name . child-vector) :in child-results
+            :collect (cons name (aref child-vector i))))))
+
+(defmethod translate-vector ((type duckdb-api:duckdb-logical-union)
+                             sql-null-return-value vector chunk-size)
+  (map 'vector
+       (lambda (v) (if v (cdr (nth (cdar v) (cdr v))) sql-null-return-value))
+       (translate-vector (duckdb-api::make-duckdb-logical-struct
+                          :fields
+                          ;; add value selector tag to struct members
+                          (cons '("" . :duckdb-utinyint)
+                                (duckdb-api:duckdb-logical-union-fields type)))
+                         nil vector chunk-size)))
+
+(defmethod translate-vector ((type duckdb-api:duckdb-logical-map)
+                             sql-null-return-value vector chunk-size)
+  (let* ((child-types (duckdb-api:duckdb-logical-map-fields type))
+         (internal (translate-vector
+                    (duckdb-api::make-duckdb-logical-list
+                     :child
+                     (duckdb-api::make-duckdb-logical-struct
+                      :fields `((k . ,(car child-types))
+                                (v . ,(cadr child-types)))))
+                    nil vector chunk-size)))
+    (map 'vector
+         (lambda (v)
+           (if v (loop :for entry :in v
+                       :collect (cons (alexandria:assoc-value entry 'k)
+                                      (alexandria:assoc-value entry 'v)))
+               sql-null-return-value))
+         internal)))
 
 (defmacro define-specialized-translate-vector (vector-type array-element-type)
   `(defmethod translate-vector
        ((vector-type (eql ,vector-type)) sql-null-return-value vector chunk-size)
-     (declare (ignore sql-null-return-value))
-     (let ((validity (duckdb-api:duckdb-vector-get-validity vector)))
-       (if (cffi:null-pointer-p validity)
-           (let ((result (make-array chunk-size :element-type ',array-element-type))
-                 (p-data (duckdb-api:duckdb-vector-get-data vector)))
-             (declare (optimize speed))
-             (loop :for i :below chunk-size
-                   :do (setf (aref result i)
-                             (cffi:mem-aref p-data ',(duckdb-api:get-ffi-type vector-type) i)))
-             result)
-           (call-next-method)))))
+     (let ((p-data (duckdb-api:duckdb-vector-get-data vector))
+           (validity (duckdb-api:duckdb-vector-get-validity vector)))
+       (do-specialized-vector (i chunk-size)
+           (,array-element-type sql-null-return-value validity)
+         (cffi:mem-aref p-data ',(duckdb-api:get-ffi-type vector-type) i)))))
 
 (define-specialized-translate-vector :duckdb-boolean boolean)
 (define-specialized-translate-vector :duckdb-tinyint (signed-byte 8))
@@ -440,7 +424,53 @@ cleanup."
 (define-specialized-translate-vector :duckdb-float single-float)
 (define-specialized-translate-vector :duckdb-double double-float)
 
-(defgeneric aggregate-vectors (vector-type sql-null-return-value results))
+(macrolet ((define-unspecialized-translate-vectors ()
+             `(progn
+                ,@(loop :for type :in
+                        '(:duckdb-varchar :duckdb-hugeint :duckdb-uhugeint
+                          :duckdb-varint :duckdb-blob :duckdb-date :duckdb-time
+                          :duckdb-timestamp :duckdb-timestamp-s :duckdb-timestamp-ms :duckdb-timestamp-ns
+                          :duckdb-interval :duckdb-uuid :duckdb-timestamp-tz)
+                        :collect `(define-specialized-translate-vector ,type t)))))
+  (define-unspecialized-translate-vectors))
+
+(defmethod translate-vector ((vector-type duckdb-api:duckdb-logical-decimal)
+                             sql-null-return-value vector chunk-size)
+  (map 'vector
+       (lambda (v)
+         (if v (* v (expt 10 (- (duckdb-api:duckdb-logical-decimal-scale vector-type))))
+             sql-null-return-value))
+       (translate-vector (duckdb-api:duckdb-logical-decimal-internal vector-type)
+                         nil vector chunk-size)))
+
+(defmethod translate-vector ((vector-type duckdb-api:duckdb-logical-enum)
+                             sql-null-return-value vector chunk-size)
+  (let ((alist (cons (cons -1 sql-null-return-value) (duckdb-api:duckdb-logical-enum-alist vector-type))))
+    (map 'vector (lambda (v) (alexandria:assoc-value alist v))
+         (translate-vector (duckdb-api:duckdb-logical-enum-internal vector-type)
+                           -1 vector chunk-size))))
+
+(defmethod translate-vector ((vector-type (eql :duckdb-bit)) sql-null-return-value vector chunk-size)
+  (map 'vector
+       (lambda (v)
+         (if v (loop :with unused-bit-count := (aref v 0)
+                     :with octet-count := (1- (length v))
+                     :with bit-count := (- (* octet-count 8) unused-bit-count)
+                     :with bits := (make-array (list bit-count) :element-type 'bit)
+                     :for i :below bit-count
+                     :for j := (+ i unused-bit-count)
+                     :for octet-index := (floor j 8)
+                     :for octet := (aref v (1+ octet-index))
+                     :for octet-bit-index := (- 7 (mod j 8))
+                     :do (setf (aref bits i) (ldb (byte 1 octet-bit-index) octet))
+                     :finally (return bits))
+             sql-null-return-value))
+       (translate-vector :duckdb-blob nil vector chunk-size)))
+
+(defgeneric aggregate-vectors (vector-type sql-null-return-value results)
+  (:documentation
+   "Aggregate RESULTS from calling `translate-vector' on DuckDB vectors in the same
+column into a single vector."))
 
 (defmethod aggregate-vectors (vector-type sql-null-return-value results)
   (declare (ignore vector-type sql-null-return-value))
