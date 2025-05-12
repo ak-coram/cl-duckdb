@@ -34,6 +34,7 @@
            #:duckdb-vector-get-data
            #:duckdb-vector-get-validity
            #:duckdb-list-vector-get-child
+           #:duckdb-list-vector-get-size
            #:duckdb-struct-vector-get-child
            #:duckdb-data-chunk-get-column-count
            #:duckdb-data-chunk-get-size

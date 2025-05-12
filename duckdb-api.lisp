@@ -286,10 +286,6 @@
        (:duckdb-timestamp-ns '(:struct duckdb-timestamp))
        (:duckdb-interval '(:struct duckdb-interval))
        (:duckdb-uuid '(:struct duckdb-uuid))
-       (:duckdb-list '(:struct duckdb-list))
-       (:duckdb-struct :void)
-       (:duckdb-map '(:struct duckdb-list))
-       (:duckdb-union :void)
        (:duckdb-bit '(:struct duckdb-blob))
        (:duckdb-timestamp-tz '(:struct duckdb-timestamp))))))
 
@@ -447,7 +443,9 @@
          (setf (mem-ref p-type 'duckdb-logical-type) ,logical-type-var)
          (duckdb-destroy-logical-type p-type)))))
 
-(defstruct duckdb-logical-decimal (internal) (scale))
+(defstruct duckdb-logical-decimal
+  (internal)
+  (scale (alexandria:required-argument :scale) :type (unsigned-byte 8)))
 
 (defstruct duckdb-logical-enum (internal) (alist))
 
@@ -756,6 +754,9 @@
   (type duckdb-logical-type))
 
 (defcfun duckdb-list-vector-get-child duckdb-vector
+  (vector duckdb-vector))
+
+(defcfun duckdb-list-vector-get-size idx
   (vector duckdb-vector))
 
 (defcfun duckdb-map-type-key-type duckdb-logical-type
