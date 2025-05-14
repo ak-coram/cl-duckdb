@@ -267,6 +267,24 @@
       (is (equalp #*11111111111111111 (ddb:get-result result 'd 0)))
       (is (equalp #*00000000000000000 (ddb:get-result result 'e 0))))))
 
+(test query-interrupted
+  (ddb:with-transient-connection
+    (let ((current-thread (bt:current-thread)))
+      (bt:make-thread (lambda () (sleep 1)
+                        (bt:interrupt-thread
+                         current-thread
+                         (lambda ()
+                           (handler-bind
+                               ((serious-condition
+                                  (lambda (c)
+                                    (invoke-restart (find-restart 'abort c)))))
+                             (cerror "Simulate interactive interrupt." nil)))))
+                      :name "DuckDB interrupt tester")
+      (with-simple-restart (abort "Simulate top-level abort.")
+        (ddb:query "SELECT count(*) AS VALUE FROM range(100000000000)" nil))
+      (let ((result (ddb:query "SELECT count(*) AS VALUE FROM range(1000)" nil)))
+        (is (equalp #(1000) (ddb:get-result result 'value)))))))
+
 (test bind-null
   (test-query "SELECT ? IS NULL AS a, ? AS b" (nil nil)
       (a b)

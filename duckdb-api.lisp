@@ -37,6 +37,12 @@
   (:duckdb-success 0)
   (:duckdb-error 1))
 
+(defcenum duckdb-pending-state
+  (:duckdb-pending-result-ready 0)
+  (:duckdb-pending-result-not-ready 1)
+  (:duckdb-pending-error 2)
+  (:duckdb-pending-no-tasks-available 3))
+
 (defctype idx :uint64)
 (defctype p-validity (:pointer :uint64))
 
@@ -305,6 +311,12 @@
 (defctype p-duckdb-result
     (:pointer (:struct duckdb-result)))
 
+(defcstruct (-duckdb-pending-result)
+  (internal-ptr (:pointer :void)))
+
+(defctype duckdb-pending-result
+    (:pointer (:struct -duckdb-pending-result)))
+
 (defcfun duckdb-open duckdb-state
   (path :string)
   (out-database (:pointer duckdb-database)))
@@ -323,6 +335,9 @@
   (out-connection (:pointer duckdb-connection)))
 
 (defcfun duckdb-disconnect :void
+  (connection (:pointer duckdb-connection)))
+
+(defcfun duckdb-interrupt :void
   (connection (:pointer duckdb-connection)))
 
 (defcfun duckdb-query duckdb-state
@@ -538,6 +553,26 @@
 (defcfun duckdb-execute-prepared duckdb-state
   (prepared-statement duckdb-prepared-statement)
   (out-result p-duckdb-result))
+
+(defcfun duckdb-pending-prepared duckdb-state
+  (prepared-statement duckdb-prepared-statement)
+  (out-result (:pointer duckdb-pending-result)))
+
+(defcfun duckdb-destroy-pending :void
+  (pending-result (:pointer duckdb-pending-result)))
+
+(defcfun duckdb-pending-error :string
+  (pending-result duckdb-pending-result))
+
+(defcfun duckdb-pending-execute-task duckdb-pending-state
+  (pending-result duckdb-pending-result))
+
+(defcfun duckdb-execute-pending duckdb-state
+  (pending-result duckdb-pending-result)
+  (out-result p-duckdb-result))
+
+(defcfun duckdb-pending-execution-is-finished :bool
+  (pending-state duckdb-pending-state))
 
 (defcfun duckdb-nparams idx
   (prepared-statement duckdb-prepared-statement))

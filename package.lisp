@@ -6,6 +6,7 @@
            #:get-ffi-type
            #:duckdb-result
            #:p-duckdb-result
+           #:duckdb-pending-result
            #:p-duckdb-column
            #:duckdb-database
            #:duckdb-connection
@@ -20,6 +21,7 @@
            #:duckdb-close
            #:duckdb-connect
            #:duckdb-disconnect
+           #:duckdb-interrupt
            #:duckdb-query
            #:duckdb-destroy-result
            #:duckdb-column-count
@@ -44,6 +46,12 @@
            #:duckdb-prepare
            #:duckdb-destroy-prepare
            #:duckdb-execute-prepared
+           #:duckdb-pending-prepared
+           #:duckdb-destroy-pending
+           #:duckdb-pending-error
+           #:duckdb-pending-execute-task
+           #:duckdb-execute-pending
+           #:duckdb-pending-execution-is-finished
            #:duckdb-nparams
            #:duckdb-param-type
            #:duckdb-clear-bindings

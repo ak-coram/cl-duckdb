@@ -251,37 +251,57 @@ The connection and the database are cleaned up after BODY is evaluated."
                  :statement statement
                  :handle p-result))
 
+(defmacro without-interrupts (&body body)
+  `(#+sbcl sb-sys:without-interrupts
+    #+openmcl ccl:without-interrupts
+    #+ecl mp:without-interrupts
+    #-(or sbcl openmcl ecl) progn
+    ,@body))
+
+(defmacro %with-execute ((result-var statement) &body body)
+  `(let ((connection (connection ,statement))
+         finished)
+     (with-foreign-objects ((p-pending-result 'duckdb-api:duckdb-pending-result)
+                            (,result-var '(:struct duckdb-api:duckdb-result)))
+       ;; TODO: interrupt proof this unwind-protect
+       (unwind-protect
+            (progn
+              (if (eql (duckdb-api:duckdb-pending-prepared (handle ,statement) p-pending-result)
+                       :duckdb-success)
+                  (loop :until
+                        (without-interrupts
+                          (setq finished
+                                (duckdb-api:duckdb-pending-execution-is-finished
+                                 (duckdb-api:duckdb-pending-execute-task
+                                  (mem-ref p-pending-result 'duckdb-api:duckdb-pending-result))))))
+                  (setq finished t))
+              (if (eql (duckdb-api:duckdb-execute-pending
+                        (mem-ref p-pending-result 'duckdb-api:duckdb-pending-result)
+                        ,result-var)
+                       :duckdb-success)
+                  (locally ,@body)
+                  (let ((error-message (duckdb-api:duckdb-result-error ,result-var)))
+                    (error 'duckdb-error
+                           :database (database connection)
+                           :statement ,statement
+                           :error-message error-message))))
+         (unless finished (duckdb-api:duckdb-interrupt (handle connection)))
+         (duckdb-api:duckdb-destroy-pending p-pending-result)))))
+
 (defun execute (statement)
   "Runs STATEMENT and returns RESULT instance.
 DESTROY-RESULT must be called on the returned value for resource
 cleanup."
-  (let ((connection (connection statement))
-        (p-result (foreign-alloc '(:struct duckdb-api:duckdb-result))))
-    (if (eql (duckdb-api:duckdb-execute-prepared (handle statement)
-                                                 p-result)
-             :duckdb-success)
-        (make-result connection statement p-result)
-        (let ((error-message (duckdb-api:duckdb-result-error p-result)))
-          (duckdb-api:duckdb-destroy-result p-result)
-          (foreign-free p-result)
-          (error 'duckdb-error
-                 :database (database connection)
-                 :statement statement
-                 :error-message error-message)))))
+  (%with-execute (p-result statement)
+    (let ((p-result-1 (foreign-alloc '(:struct duckdb-api:duckdb-result))))
+      (setf (mem-ref p-result-1 '(:struct duckdb-api:duckdb-result))
+            (mem-ref p-result '(:struct duckdb-api:duckdb-result)))
+      (make-result connection statement p-result-1))))
 
 (defun perform (statement)
   "Same as EXECUTE, but doesn't return any results and needs no cleanup."
-  (with-foreign-object (p-result '(:struct duckdb-api:duckdb-result))
-    (if (eql (duckdb-api:duckdb-execute-prepared (handle statement)
-                                                 p-result)
-             :duckdb-success)
-        (duckdb-api:duckdb-destroy-result p-result)
-        (let ((error-message (duckdb-api:duckdb-result-error p-result)))
-          (duckdb-api:duckdb-destroy-result p-result)
-          (error 'duckdb-error
-                 :database (database (connection statement))
-                 :statement statement
-                 :error-message error-message)))))
+  (%with-execute (p-result statement)
+    (duckdb-api:duckdb-destroy-result p-result)))
 
 (defun destroy-result (result)
   (let ((p-result (handle result)))
