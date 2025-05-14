@@ -14,8 +14,9 @@ on:
 jobs:
   test:
     name: ${{ matrix.lisp }} (${{ matrix.cffi }}) on ${{ matrix.os }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         os: [FreeBSD]
         lisp: [sbcl-bin, ccl-bin/1.13, ecl/24.5.10]
