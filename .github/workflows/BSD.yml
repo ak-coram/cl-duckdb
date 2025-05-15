@@ -13,7 +13,7 @@ on:
 
 jobs:
   test:
-    name: ${{ matrix.lisp }} (${{ matrix.cffi }}) on ${{ matrix.os }}
+    name: ${{ matrix.lisp }} (${{ matrix.cffi }}) on ${{ matrix.os }} (${{ matrix.arch }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -21,11 +21,16 @@ jobs:
         os: [FreeBSD]
         lisp: [sbcl, ccl, ecl]
         cffi: [default, static]
+        arch: [x86_64, aarch64]
         exclude:
           - lisp: sbcl
             cffi: static
           - lisp: ccl
             cffi: static
+          - lisp: sbcl
+            arch: aarch64
+          - lisp: ccl
+            arch: aarch64
 
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +42,7 @@ jobs:
           usesh: true
           sync: rsync
           copyback: false
+          arch: ${{ matrix.arch }}
           prepare: |
             sed 's/quarterly/latest/' /etc/pkg/FreeBSD.conf > /tmp/FreeBSD.conf && mv /tmp/FreeBSD.conf /etc/pkg/
             pkg install -y duckdb wget gcc libffi ${{ matrix.lisp }}
