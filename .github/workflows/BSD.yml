@@ -19,12 +19,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [FreeBSD]
-        lisp: [sbcl-bin, ccl-bin/1.13, ecl/24.5.10]
+        lisp: [sbcl, ccl, ecl]
         cffi: [default, static]
         exclude:
-          - lisp: sbcl-bin
+          - lisp: sbcl
             cffi: static
-          - lisp: ccl-bin/1.13
+          - lisp: ccl
             cffi: static
 
     steps:
@@ -33,20 +33,17 @@ jobs:
       - name: Install dependencies & run tests
         uses: vmactions/freebsd-vm@v1
         with:
+          release: "15.0"
           usesh: true
           sync: rsync
           copyback: false
           prepare: |
             sed 's/quarterly/latest/' /etc/pkg/FreeBSD.conf > /tmp/FreeBSD.conf && mv /tmp/FreeBSD.conf /etc/pkg/
-            pkg install -y duckdb bash roswell autoconf texinfo perl5 gmake gcc libffi
-            ln -s /usr/local/bin/gmake /bin/make
-            ln -s /usr/local/bin/bash /usr/local/bin/sh # ugh
+            pkg install -y duckdb wget gcc libffi ${{ matrix.lisp }}
             export PATH=/usr/local/bin/:$PATH
-            ros install ${{ matrix.lisp }}
-            ros install neil-lindquist/ci-utils
-            ros use ${{ matrix.lisp }}
-            ros run --eval '(progn (ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil) (uiop:quit))'
+            wget https://beta.quicklisp.org/quicklisp.lisp
+            ${{ matrix.lisp }} --load quicklisp.lisp --eval '(quicklisp-quickstart:install)' --eval '(progn (ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil) (uiop:quit))'
           run: |
-            ln -s $(pwd) ~/.roswell/local-projects/cl-duckdb
+            ln -s $(pwd) ~/quicklisp/local-projects/cl-duckdb
             if [ ${{ matrix.cffi }} = 'static' ]; then export CL_DUCKDB_USE_SFFI=t; fi
-            ~/.roswell/bin/run-fiveam -e t -l duckdb/test :duckdb
+            ${{ matrix.lisp }} --load ~/quicklisp/setup.lisp --eval "(progn (ql:quickload :duckdb/test) (uiop:quit (if (uiop:symbol-call :fiveam '#:run! :duckdb) 0 1)))"
