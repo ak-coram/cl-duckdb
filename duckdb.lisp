@@ -261,32 +261,41 @@ The connection and the database are cleaned up after BODY is evaluated."
 (defmacro %with-execute ((result-var statement) &body body)
   `(let ((connection (connection ,statement))
          finished)
-     (with-foreign-objects ((p-pending-result 'duckdb-api:duckdb-pending-result)
-                            (,result-var '(:struct duckdb-api:duckdb-result)))
-       ;; TODO: interrupt proof this unwind-protect
-       (unwind-protect
-            (progn
-              (if (eql (duckdb-api:duckdb-pending-prepared (handle ,statement) p-pending-result)
-                       :duckdb-success)
-                  (loop :until
-                        (without-interrupts
-                          (setq finished
-                                (duckdb-api:duckdb-pending-execution-is-finished
-                                 (duckdb-api:duckdb-pending-execute-task
-                                  (mem-ref p-pending-result 'duckdb-api:duckdb-pending-result))))))
-                  (setq finished t))
-              (if (eql (duckdb-api:duckdb-execute-pending
-                        (mem-ref p-pending-result 'duckdb-api:duckdb-pending-result)
-                        ,result-var)
-                       :duckdb-success)
-                  (locally ,@body)
-                  (let ((error-message (duckdb-api:duckdb-result-error ,result-var)))
-                    (error 'duckdb-error
-                           :database (database connection)
-                           :statement ,statement
-                           :error-message error-message))))
-         (unless finished (duckdb-api:duckdb-interrupt (handle connection)))
-         (duckdb-api:duckdb-destroy-pending p-pending-result)))))
+     (flet ((duckdb-error (error-message)
+              (error 'duckdb-error
+                     :database (database connection)
+                     :statement ,statement
+                     :error-message error-message)))
+       (with-foreign-objects ((p-pending-result 'duckdb-api:duckdb-pending-result)
+                              (,result-var '(:struct duckdb-api:duckdb-result)))
+         ;; TODO: interrupt proof this unwind-protect
+         (unwind-protect
+              (progn
+                (if (eql (duckdb-api:duckdb-pending-prepared (handle ,statement) p-pending-result)
+                         :duckdb-success)
+                    (loop
+                      (without-interrupts
+                        (ecase (duckdb-api:duckdb-pending-execute-task
+                                (mem-ref p-pending-result 'duckdb-api:duckdb-pending-result))
+                          (:duckdb-pending-result-ready
+                           (setq finished t)
+                           (return))
+                          (:duckdb-pending-error
+                           (setq finished t)
+                           (duckdb-error
+                            (duckdb-api:duckdb-pending-error
+                             (mem-ref p-pending-result 'duckdb-api:duckdb-pending-result))))
+                          (:duckdb-pending-result-not-ready)
+                          (:duckdb-pending-no-tasks-available))))
+                    (setq finished t))
+                (if (eql (duckdb-api:duckdb-execute-pending
+                          (mem-ref p-pending-result 'duckdb-api:duckdb-pending-result)
+                          ,result-var)
+                         :duckdb-success)
+                    (locally ,@body)
+                    (duckdb-error (duckdb-api:duckdb-result-error ,result-var))))
+           (unless finished (duckdb-api:duckdb-interrupt (handle connection)))
+           (duckdb-api:duckdb-destroy-pending p-pending-result))))))
 
 (defun execute (statement)
   "Runs STATEMENT and returns RESULT instance.
