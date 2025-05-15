@@ -22,7 +22,7 @@ systems are tested via [[https://github.com/ak-coram/cl-duckdb/blob/main/.github
 other BSDs are also known to work.
 
 - [[https://sbcl.org/][SBCL]] (Linux, FreeBSD, Windows, macOS, macOS on AArch64)
-- [[https://ccl.clozure.com/][CCL]] (Linux, macOS)
+- [[https://ccl.clozure.com/][CCL]] (Linux, FreeBSD, macOS)
 - [[https://ecl.common-lisp.dev/][ECL]] (Linux, FreeBSD, macOS, macOS on AArch64), see the [[./ECL.org][ECL.org]] document for specifics
 
 The following native libraries need to be installed in a location
