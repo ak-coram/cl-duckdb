@@ -189,6 +189,29 @@
                                   (local-time:sec-of value)))
                     (round (local-time:nsec-of value) 1000)))))
 
+(defcstruct (duckdb-timestamp-s :class duckdb-timestamp-s-type)
+  (secs :int64))
+
+(defmethod translate-from-foreign (value (type duckdb-timestamp-s-type))
+  (with-foreign-slots ((secs) value (:struct duckdb-timestamp-s))
+    (local-time:unix-to-timestamp secs)))
+
+(defcstruct (duckdb-timestamp-ms :class duckdb-timestamp-ms-type)
+  (milis :int64))
+
+(defmethod translate-from-foreign (value (type duckdb-timestamp-ms-type))
+  (with-foreign-slots ((milis) value (:struct duckdb-timestamp-ms))
+    (multiple-value-bind (secs remainder) (floor milis 1000)
+      (local-time:unix-to-timestamp secs :nsec (* remainder 1000000)))))
+
+(defcstruct (duckdb-timestamp-ns :class duckdb-timestamp-ns-type)
+  (nanos :int64))
+
+(defmethod translate-from-foreign (value (type duckdb-timestamp-ns-type))
+  (with-foreign-slots ((nanos) value (:struct duckdb-timestamp-ns))
+    (multiple-value-bind (secs remainder) (floor nanos 1000000000)
+      (local-time:unix-to-timestamp secs :nsec remainder))))
+
 (defcstruct (duckdb-interval :class duckdb-interval-type)
   (months :int32)
   (days :int32)
@@ -287,9 +310,9 @@
        (:duckdb-date '(:struct duckdb-date))
        (:duckdb-time '(:struct duckdb-time))
        (:duckdb-timestamp '(:struct duckdb-timestamp))
-       (:duckdb-timestamp-s '(:struct duckdb-timestamp))
-       (:duckdb-timestamp-ms '(:struct duckdb-timestamp))
-       (:duckdb-timestamp-ns '(:struct duckdb-timestamp))
+       (:duckdb-timestamp-s '(:struct duckdb-timestamp-s))
+       (:duckdb-timestamp-ms '(:struct duckdb-timestamp-ms))
+       (:duckdb-timestamp-ns '(:struct duckdb-timestamp-ns))
        (:duckdb-interval '(:struct duckdb-interval))
        (:duckdb-uuid '(:struct duckdb-uuid))
        (:duckdb-bit '(:struct duckdb-blob))
