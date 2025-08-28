@@ -37,7 +37,7 @@ jobs:
       LISP: ${{ matrix.lisp }}
       DUCKDB_VERSION: ${{ matrix.duckdb }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Lisp
         uses: 40ants/setup-lisp@v4
