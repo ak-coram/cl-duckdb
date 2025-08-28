@@ -634,6 +634,28 @@
         (is (eql (cdr sums)
                  (ddb:get-result (ddb:query double-query nil) 'sum 0)))))))
 
+(test static-table-blob
+  (let ((blob (make-array '(13) :element-type '(unsigned-byte 8)
+                                :initial-contents '(1 2 3 4 5 0 0 0 6 7 8 9 10))))
+    (ddb:with-transient-connection
+      (ddb:with-static-table
+          ("blobs" `(("blob" . (,(list blob blob blob) :duckdb-blob))))
+        (loop :for result :across (ddb:get-result
+                                   (ddb:query "SELECT blob FROM blobs" nil)
+                                   'blob)
+              :do (is (equalp result blob)))))))
+
+(test static-table-string
+  (let ((strings '("朝三暮四" "井底之蛙" "完璧歸趙" "塞翁失馬")))
+    (ddb:with-transient-connection
+      (ddb:with-static-table
+          ("strings" `(("string" . (,strings :duckdb-varchar))))
+        (loop :for result :across (ddb:get-result
+                                   (ddb:query "SELECT string FROM strings" nil)
+                                   'string)
+              :for string :in strings
+              :do (is (equalp result string)))))))
+
 (test static-table-scopes
   (ddb:with-transient-connection
     (labels ((get-scope (table-name)

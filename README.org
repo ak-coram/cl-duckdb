@@ -290,7 +290,7 @@ column type and can contain the following values:
 - Booleans (nil, t, :false, :true, :null)
 - Integers in range of the corresponding column type
 - Floating point numbers (single-float & double-float)
-- Strings
+- Strings & blobs
 - Date, time or datetime values
 - UUIDs
 - NIL values

@@ -184,12 +184,14 @@ automatically inferring column types in static tables.")
   `(ecase duckdb-type
      ,@(loop
          :for (_ duckdb-type) :in (append `((nil :duckdb-varchar)
+                                            (nil :duckdb-blob)
                                             (nil :duckdb-timestamp)
                                             (nil :duckdb-date)
                                             (nil :duckdb-time)
                                             (nil :duckdb-uuid))
                                           (static-table-column-types))
          :for is-string := (eql duckdb-type :duckdb-varchar)
+         :for is-blob := (eql duckdb-type :duckdb-blob)
          :for is-boolean := (eql duckdb-type :duckdb-boolean)
          :collect
          `(,duckdb-type
@@ -215,17 +217,27 @@ automatically inferring column types in static tables.")
                    :do (setf (ldb (byte 1 validity-bit-index)
                                   validity-value)
                              0)
-                 :else :do ,(cond
-                              (is-string
-                               `(duckdb-vector-assign-string-element vector
-                                                                     i
-                                                                     v))
-                              (is-boolean
-                               `(setf (mem-aref data-ptr :uint8 i)
-                                      (if (and (not (eql v :false)) v) 1 0)))
-                              (t `(setf (mem-aref data-ptr
-                                                  ',(get-ffi-type duckdb-type) i)
-                                        v)))
+                 :else
+                   :do ,(cond
+                          (is-string
+                           `(duckdb-vector-assign-string-element vector
+                                                                 i
+                                                                 v))
+                          (is-blob
+                           `(let ((l (length v)))
+                              (with-foreign-object (ptr :uint8 l)
+                                (dotimes (x l) (setf (mem-aref ptr :uint8 x)
+                                                     (aref v x)))
+                                (duckdb-vector-assign-string-element-len vector
+                                                                         i
+                                                                         ptr
+                                                                         l))))
+                          (is-boolean
+                           `(setf (mem-aref data-ptr :uint8 i)
+                                  (if (and (not (eql v :false)) v) 1 0)))
+                          (t `(setf (mem-aref data-ptr
+                                              ',(get-ffi-type duckdb-type) i)
+                                    v)))
                  :when (eql validity-bit-index 63)
                    :do (setf (mem-aref validity-ptr :uint64 (floor i 64))
                              validity-value)

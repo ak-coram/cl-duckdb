@@ -558,6 +558,12 @@
   (index idx)
   (str :string))
 
+(defcfun duckdb-vector-assign-string-element-len :void
+  (vector duckdb-vector)
+  (index idx)
+  (str (:pointer :uint8))
+  (len idx))
+
 (defcfun duckdb-validity-row-is-valid :bool
   (validity p-validity)
   (row idx))
