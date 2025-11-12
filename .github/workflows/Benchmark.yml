@@ -17,7 +17,7 @@ jobs:
       matrix:
         lisp: [sbcl-bin, ccl-bin/1.13, ecl/24.5.10]
         os: [ubuntu-latest]
-        duckdb: [1.0.0, 1.1.3, 1.2.2, 1.3.2, 1.4.1, nightly]
+        duckdb: [1.0.0, 1.1.3, 1.2.2, 1.3.2, 1.4.2, nightly]
     env:
       LISP: ${{ matrix.lisp }}
       DUCKDB_VERSION: ${{ matrix.duckdb }}
