@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         lisp: [sbcl-bin, ccl-bin/1.13, ecl/24.5.10]
-        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
+        os: [ubuntu-latest, windows-latest, macos-latest, macos-15-intel]
         quicklisp-dist:
           - ultralisp
         cffi: [default, static]
@@ -32,7 +32,9 @@ jobs:
             lisp: ccl-bin/1.13
           - os: windows-latest
             lisp: ecl/24.5.10
-          - os: macos-14
+          - os: macos-latest
+            lisp: ccl-bin/1.13
+          - os: macos-15-intel
             lisp: ccl-bin/1.13
     env:
       LISP: ${{ matrix.lisp }}
@@ -75,7 +77,6 @@ jobs:
           export LD_LIBRARY_PATH=./
           if [ ${{ matrix.cffi }} = 'static' ]; then export CL_DUCKDB_USE_SFFI=t; fi
           export CL_DUCKDB_LIBRARY_PATH="${{ github.workspace }}"
-          if [ ${{ matrix.os }} = 'macos-latest' ]; then sudo cp ./libduckdb.dylib /usr/local/lib/; fi
           ros install neil-lindquist/ci-utils
           asdf-register-project
           ros --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)' --eval '(ql:quickload :duckdb)' --eval '(duckdb:with-transient-connection (format t "~%DuckDB source_id: ~A~%" (duckdb:get-result (duckdb:q "PRAGMA version") (quote source-id) 0)))' --eval '(uiop:quit)'
