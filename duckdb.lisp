@@ -30,34 +30,39 @@
    (worker-pool :accessor worker-pool)))
 
 (defmethod initialize-instance :after
-    ((instance database) &key path threads)
+    ((instance database) &key path threads allow-unsigned-extensions)
   (with-foreign-object (p-database 'duckdb-api:duckdb-database)
     (with-foreign-object (p-error-message '(:pointer :string))
-      (duckdb-api:with-config
-          (config (when threads
-                    (list "threads" #+bordeaux-threads threads
-                                    #-bordeaux-threads 1
-                          "external_threads" #+bordeaux-threads threads
-                                             #-bordeaux-threads 1)))
-        (let (;; prefer duckdb-open-ext over duckdb-open for error message
-              (result (duckdb-api:duckdb-open-ext path
-                                                  p-database
-                                                  config
-                                                  p-error-message)))
-          (if (eql result :duckdb-success)
-              (let* ((handle (mem-ref p-database 'duckdb-api:duckdb-database))
-                     (pool (when (and #+bordeaux-threads t
-                                      #-bordeaux-threads nil
-                                      threads
-                                      (< 1 threads))
-                             (duckdb-api:start-worker-pool handle (1- threads)))))
-                (duckdb-api:add-static-table-replacement-scan handle)
-                (setf (handle instance) handle
-                      (path instance) path
-                      (threads instance) threads
-                      (worker-pool instance) pool))
-              (error 'duckdb-error
-                     :error-message (duckdb-api:get-message p-error-message))))))))
+      (let ((conf '()))
+        (when threads
+          (alexandria:appendf conf
+                              (list "threads" #+bordeaux-threads threads
+                                              #-bordeaux-threads 1
+                                              "external_threads" #+bordeaux-threads threads
+                                                                 #-bordeaux-threads 1)))
+        (when allow-unsigned-extensions
+          (alexandria:appendf conf (list "allow_unsigned_extensions" "true")))
+        (duckdb-api:with-config
+            (config conf)
+          (let (;; prefer duckdb-open-ext over duckdb-open for error message
+                (result (duckdb-api:duckdb-open-ext path
+                                                    p-database
+                                                    config
+                                                    p-error-message)))
+            (if (eql result :duckdb-success)
+                (let* ((handle (mem-ref p-database 'duckdb-api:duckdb-database))
+                       (pool (when (and #+bordeaux-threads t
+                                        #-bordeaux-threads nil
+                                        threads
+                                        (< 1 threads))
+                               (duckdb-api:start-worker-pool handle (1- threads)))))
+                  (duckdb-api:add-static-table-replacement-scan handle)
+                  (setf (handle instance) handle
+                        (path instance) path
+                        (threads instance) threads
+                        (worker-pool instance) pool))
+                (error 'duckdb-error
+                       :error-message (duckdb-api:get-message p-error-message)))))))))
 
 (defvar *threads*
   #-ECL nil
@@ -88,7 +93,7 @@ value.")
   "This value will be returned for SQL NULL values in query
 results. Defaults to NIL.")
 
-(defun open-database (&key (path ":memory:") (threads *threads*))
+(defun open-database (&key (path ":memory:") (threads *threads*) allow-unsigned-extensions)
   "Opens and returns database for PATH with \":memory:\" as default.
 
 See CLOSE-DATABASE for cleanup and *THREADS* for the supported values
@@ -99,7 +104,8 @@ for THREADS."
                  (when (and *default-thread-count* threads)
                    (etypecase threads
                      ((integer 1) threads)
-                     (boolean *default-thread-count*)))))
+                     (boolean *default-thread-count*)))
+                 :allow-unsigned-extensions allow-unsigned-extensions))
 
 (defun close-database (database)
   "Does resource cleanup for DATABASE, also see OPEN-DATABASE."
@@ -109,13 +115,15 @@ for THREADS."
           (handle database))
     (duckdb-api:duckdb-close p-database)))
 
-(defmacro with-open-database ((database-var &key path threads) &body body)
+(defmacro with-open-database ((database-var &key path threads allow-unsigned-extensions) &body body)
   "Opens database for PATH, binds it to DATABASE-VAR.
 The database is closed after BODY is evaluated."
   `(let ((,database-var (open-database ,@(when path
                                            `(:path ,path))
                                        ,@(when threads
-                                           `(:threads ,threads)))))
+                                           `(:threads ,threads))
+                                       ,@(when allow-unsigned-extensions
+                                           `(:allow-unsigned-extensions ,allow-unsigned-extensions)))))
      (unwind-protect (progn ,@body)
        (close-database ,database-var))))
 
