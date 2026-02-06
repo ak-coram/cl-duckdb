@@ -553,6 +553,13 @@ Alternatively the default return value for SQL NULL can be customized:
   (duckdb/benchmark:run-benchmarks)
 #+end_src
 
+** See also
+
+*** Emacs
+
+- [[https://github.com/gggion/duckdb-query.el][Elisp DuckDB client]]
+- [[https://github.com/gggion/ob-duckdb][Org Babel integration with DuckDB]]
+
 ** Legal
 
 - Released under the MIT License, same as DuckDB.
