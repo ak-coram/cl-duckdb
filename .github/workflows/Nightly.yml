@@ -50,7 +50,7 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          aria2c "https://artifacts.duckdb.org/latest/duckdb-binaries-linux-amd64.zip"
+          aria2c -o duckdb-binaries-linux-amd64.zip "https://artifacts.duckdb.org/latest/duckdb-binaries-linux-amd64.zip"
           unzip duckdb-binaries-linux-amd64.zip -d .
           unzip libduckdb-linux-amd64.zip -d .
 
@@ -58,14 +58,14 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          aria2c "https://artifacts.duckdb.org/latest/duckdb-binaries-osx.zip"
+          aria2c -o duckdb-binaries-osx.zip "https://artifacts.duckdb.org/latest/duckdb-binaries-osx.zip"
           7z x duckdb-binaries-osx.zip
           7z x libduckdb-osx-universal.zip
 
       - name: Install DuckDB (Windows)
         if: runner.os == 'Windows'
         run: |
-          aria2c "https://artifacts.duckdb.org/latest/duckdb-binaries-windows.zip"
+          aria2c -o duckdb-binaries-windows.zip "https://artifacts.duckdb.org/latest/duckdb-binaries-windows.zip"
           7z x duckdb-binaries-windows.zip
           7z x libduckdb-windows-amd64.zip
 
