@@ -11,7 +11,7 @@
   (let ((query (ddb:concat "SELECT current_setting('threads') AS n"
                            " UNION ALL "
                            "SELECT current_setting('external_threads') AS n"))
-        (default-thread-count ddb:*default-thread-count*))
+        (default-thread-count (ddb:query-default-thread-count)))
     (labels ((get-thread-counts ()
                (ddb:get-result (ddb:query query nil) 'n)))
       (ddb:with-threads nil

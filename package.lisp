@@ -188,4 +188,5 @@
            #:concat
            #:join
            #:snake-case-to-param-case
-           #:param-case-to-snake-case))
+           #:param-case-to-snake-case
+           #:query-default-thread-count))

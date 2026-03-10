@@ -84,14 +84,11 @@ used by default on ECL if it's built with support for threading.")
   `(let ((*threads* ,threads))
      ,@body))
 
-(defvar *default-thread-count* nil
-  "This value will be initialized using a temporary in-memory connection
-to DuckDB with internal thread-management to retrieve the default
-value.")
-
 (defvar *sql-null-return-value* nil
   "This value will be returned for SQL NULL values in query
 results. Defaults to NIL.")
+
+(declaim (ftype (function () integer) query-default-thread-count))
 
 (defun open-database (&key (path ":memory:") (threads *threads*) allow-unsigned-extensions)
   "Opens and returns database for PATH with \":memory:\" as default.
@@ -101,10 +98,10 @@ for THREADS."
   (make-instance 'database
                  :path path
                  :threads
-                 (when (and *default-thread-count* threads)
+                 (when threads
                    (etypecase threads
                      ((integer 1) threads)
-                     (boolean *default-thread-count*)))
+                     (boolean (query-default-thread-count))))
                  :allow-unsigned-extensions allow-unsigned-extensions))
 
 (defun close-database (database)
@@ -1055,11 +1052,11 @@ intentionally."
                               `(:connection ,one-conn)))
            (perform ,finish-statement))))))
 
-;; Initialize the default number of threads based on DuckDB defaults
-(eval-when (:load-toplevel :execute)
-  (with-open-database (db :threads nil)
-    (with-default-connection (db)
-      (setf *default-thread-count*
-            (get-result (query "SELECT current_setting('threads') AS thread_count"
-                               nil)
-                        'thread-count 0)))))
+(defun query-default-thread-count ()
+  "Query the default number of threads used by the internal thread pool."
+  (let ((*threads* nil))
+    (with-open-database (db)
+      (with-default-connection (db)
+        (get-result (query "SELECT current_setting('threads') AS thread_count"
+                           nil)
+                    'thread-count 0)))))
