@@ -145,7 +145,6 @@
            #:error-message
            #:*connection*
            #:*threads*
-           #:*default-thread-count*
            #:*sql-null-return-value*
            #:with-threads
            #:open-database
