@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        lisp: [sbcl-bin, ccl-bin/1.13, ecl/24.5.10]
+        lisp: [sbcl-bin, ccl-bin/1.13, ecl/26.3.27]
         os: [ubuntu-latest, windows-latest, macos-latest, macos-15-intel]
         quicklisp-dist:
           - ultralisp
@@ -31,7 +31,7 @@ jobs:
           - os: windows-latest
             lisp: ccl-bin/1.13
           - os: windows-latest
-            lisp: ecl/24.5.10
+            lisp: ecl/26.3.27
           - os: macos-latest
             lisp: ccl-bin/1.13
           - os: macos-15-intel
