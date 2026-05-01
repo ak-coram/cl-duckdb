@@ -3,7 +3,7 @@
 #+begin_html
 <div align="center">
   <a href="https://upload.wikimedia.org/wikipedia/commons/4/43/Pair_of_mandarin_ducks.jpg" target="_blank">
-    <img alt="鴛鴦戲水" title="鴛鴦戲水" src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/Pair_of_mandarin_ducks.jpg/440px-Pair_of_mandarin_ducks.jpg" width="220" height="165">
+    <img alt="鴛鴦戲水" title="鴛鴦戲水" src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/Pair_of_mandarin_ducks.jpg/250px-Pair_of_mandarin_ducks.jpg" width="220" height="165">
   </a>
 </div>
 <p align="center">
