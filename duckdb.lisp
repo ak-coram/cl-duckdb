@@ -359,7 +359,7 @@ ARRAY-ELEMENT-TYPE. ARRAY-ELEMENT-TYPE is not evaluated."
               `(((typep ,sql-null-return-value ',array-element-type)
                  (let ((result (make-array ,chunk-size :element-type ',array-element-type)))
                    (loop :for ,index-var :below ,chunk-size
-                         :do (setf (aref result i)
+                         :do (setf (aref result ,index-var)
                                    (if (validity-row-is-valid ,validity ,index-var)
                                        (locally ,@body)
                                        ,sql-null-return-value)))
