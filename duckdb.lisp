@@ -378,6 +378,11 @@ ARRAY-ELEMENT-TYPE. ARRAY-ELEMENT-TYPE is not evaluated."
 
 The results are passed to `aggregate-vectors'."))
 
+(defmethod translate-vector ((vector-type (eql :duckdb-sqlnull))
+                             sql-null-return-value vector chunk-size)
+  (make-array chunk-size :element-type (type-of sql-null-return-value)
+                         :initial-element sql-null-return-value))
+
 (defmethod translate-vector ((type duckdb-api:duckdb-logical-list)
                              sql-null-return-value vector chunk-size)
   (let ((child (translate-vector
