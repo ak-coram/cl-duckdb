@@ -13,12 +13,13 @@ on:
 
 jobs:
   test:
-    name: ${{ matrix.lisp }} (${{ matrix.cffi }}) on ${{ matrix.os }} with duckdb nightly
+    name: ${{ matrix.lisp }} (${{ matrix.cffi }}) on ${{ matrix.os }} with DuckDB ${{ matrix.duckdb }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         lisp: [sbcl-bin, ccl-bin/1.13, ecl/26.5.5]
+        duckdb: [v1.5-variegata, v2.0-cyanoptera]
         os: [ubuntu-latest, windows-latest, macos-latest, macos-15-intel]
         quicklisp-dist:
           - ultralisp
@@ -50,24 +51,37 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          aria2c -o duckdb-binaries-linux-amd64.zip "https://artifacts.duckdb.org/latest/duckdb-binaries-linux-amd64.zip"
-          unzip duckdb-binaries-linux-amd64.zip -d .
-          unzip libduckdb-linux-amd64.zip -d .
+          if [ "${{ matrix.duckdb }}" = "v1.5-variegata" ]; then
+            aria2c -o duckdb-binaries-linux-amd64.zip "https://artifacts.duckdb.org/${{ matrix.duckdb }}/duckdb-binaries-linux-amd64.zip"
+            unzip duckdb-binaries-linux-amd64.zip -d .
+            unzip libduckdb-linux-amd64.zip -d .
+          else
+            aria2c -o duckdb-shared-libs-linux-amd64.tar.gz "https://artifacts.duckdb.org/${{ matrix.duckdb }}/duckdb-shared-libs-linux-amd64.tar.gz"
+            tar -xzf duckdb-shared-libs-linux-amd64.tar.gz
+          fi
 
       - name: Install DuckDB (macOS)
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          aria2c -o duckdb-binaries-osx.zip "https://artifacts.duckdb.org/latest/duckdb-binaries-osx.zip"
-          7z x duckdb-binaries-osx.zip
-          7z x libduckdb-osx-universal.zip
+          if [ "${{ matrix.duckdb }}" = "v1.5-variegata" ]; then
+            aria2c -o duckdb-binaries-osx.zip "https://artifacts.duckdb.org/${{ matrix.duckdb }}/duckdb-binaries-osx.zip"
+            7z x duckdb-binaries-osx.zip
+          else
+            aria2c -o duckdb-shared-libs-osx-universal.tar.gz "https://artifacts.duckdb.org/${{ matrix.duckdb }}/duckdb-shared-libs-osx-universal.tar.gz"
+            tar -xzf duckdb-shared-libs-osx-universal.tar.gz
+          fi
 
       - name: Install DuckDB (Windows)
         if: runner.os == 'Windows'
         run: |
-          aria2c -o duckdb-binaries-windows.zip "https://artifacts.duckdb.org/latest/duckdb-binaries-windows.zip"
-          7z x duckdb-binaries-windows.zip
-          7z x libduckdb-windows-amd64.zip
+          if ("${{ matrix.duckdb }}" -eq "v1.5-variegata") {
+            aria2c -o duckdb-binaries-windows.zip "https://artifacts.duckdb.org/${{ matrix.duckdb }}/duckdb-binaries-windows.zip"
+            7z x duckdb-binaries-windows.zip
+          } else {
+            aria2c -o duckdb-shared-libs-windows-amd64.tar.gz "https://artifacts.duckdb.org/${{ matrix.duckdb }}/duckdb-shared-libs-windows-amd64.tar.gz"
+            tar -xzf duckdb-shared-libs-windows-amd64.tar.gz
+          }
 
       - name: Run tests (Non-Windows)
         if: runner.os != 'Windows'
