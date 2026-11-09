@@ -17,7 +17,7 @@ jobs:
       matrix:
         lisp: [sbcl-bin, ccl-bin/1.13, ecl/26.5.5]
         os: [ubuntu-latest]
-        duckdb: [1.0.0, 1.1.3, 1.2.2, 1.3.2, 1.4.5, 1.5.6, nightly]
+        duckdb: [2.0.0, nightly]
     env:
       LISP: ${{ matrix.lisp }}
       DUCKDB_VERSION: ${{ matrix.duckdb }}
@@ -27,8 +27,12 @@ jobs:
       - name: Install DuckDB
         shell: bash
         run: |
-          if [ ${{ matrix.duckdb }} = 'nightly' ]; then aria2c -o duckdb-binaries-linux-amd64.zip "https://artifacts.duckdb.org/latest/duckdb-binaries-linux-amd64.zip" && unzip duckdb-binaries-linux-amd64.zip -d .; else aria2c -o libduckdb-linux-amd64.zip "https://github.com/duckdb/duckdb/releases/download/v${DUCKDB_VERSION}/libduckdb-linux-amd64.zip"; fi
-          unzip libduckdb-linux-amd64.zip -d .
+          if [ "${DUCKDB_VERSION}" = 'nightly' ]; then
+            aria2c -o duckdb-shared-libs-linux-amd64.tar.gz "https://artifacts.duckdb.org/v2.0-cyanoptera/duckdb-shared-libs-linux-amd64.tar.gz"
+          else
+            aria2c -o duckdb-shared-libs-linux-amd64.tar.gz "https://github.com/duckdb/duckdb/releases/download/v${DUCKDB_VERSION}/duckdb-shared-libs-linux-amd64.tar.gz"
+          fi
+          tar -xzf duckdb-shared-libs-linux-amd64.tar.gz
 
       - name: Setup Lisp
         uses: 40ants/setup-lisp@v4
@@ -42,4 +46,15 @@ jobs:
           export CL_DUCKDB_USE_SFFI=t
           export CL_DUCKDB_LIBRARY_PATH="${{ github.workspace }}"
           ros --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)' --eval '(uiop:quit)'
-          ros run --eval '(progn (ql:quickload :duckdb/benchmark) (asdf:test-system :duckdb/benchmark) (quit))'
+          ros install neil-lindquist/ci-utils
+          asdf-register-project
+          ros --eval '
+            (handler-case
+                (progn
+                  (format t "~&Benchmark source: ~A~%" (asdf:system-source-directory :duckdb))
+                  (ql:quickload :duckdb/benchmark)
+                  (asdf:test-system :duckdb/benchmark)
+                  (uiop:quit 0))
+              (error (condition)
+                (format *error-output* "~&Benchmark failed: ~A~%" condition)
+                (uiop:quit 1)))'

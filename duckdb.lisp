@@ -2,15 +2,6 @@
 
 (in-package #:duckdb)
 
-(defmacro with-all-float-traps-masked (&rest body)
-  `(float-features:with-float-traps-masked (:underflow
-                                            :overflow
-                                            :inexact
-                                            :invalid
-                                            :divide-by-zero
-                                            :denormalized-operand)
-     ,@body))
-
 (define-condition duckdb-error (simple-error)
   ((database :initarg :database :accessor database)
    (statement :initarg :statement :accessor statement)
@@ -45,10 +36,12 @@
         (duckdb-api:with-config
             (config conf)
           (let (;; prefer duckdb-open-ext over duckdb-open for error message
-                (result (duckdb-api:duckdb-open-ext path
-                                                    p-database
-                                                    config
-                                                    p-error-message)))
+                ;; Native workers inherit the floating-point environment here.
+                (result (with-all-float-traps-masked
+                          (duckdb-api:duckdb-open-ext path
+                                                      p-database
+                                                      config
+                                                      p-error-message))))
             (if (eql result :duckdb-success)
                 (let* ((handle (mem-ref p-database 'duckdb-api:duckdb-database))
                        (pool (when (and #+bordeaux-threads t
@@ -895,7 +888,9 @@ available. See FORMAT-QUERY for more generic usage."
   (with-foreign-object (p-appender 'duckdb-api:duckdb-appender)
     (setf (mem-ref p-appender 'duckdb-api:duckdb-appender)
           (handle appender))
-    (duckdb-api:duckdb-appender-destroy p-appender)))
+    ;; Destroying an appender flushes buffered rows through DuckDB's numeric code.
+    (with-all-float-traps-masked
+      (duckdb-api:duckdb-appender-destroy p-appender))))
 
 (defmacro with-appender
     ((appender-var table &key schema connection types)
@@ -968,20 +963,22 @@ intentionally."
 
 (defun append-row (appender values)
   (let ((error-message "Failed appending ~d value~:p to table with ~d column~:p."))
-    (loop :with handle := (handle appender)
-          :for i :from 0
-          :for duckdb-type :in (types appender)
-          :for value :in values
-          :do (generate-append-value-dispatch)
-          :finally (if (eql (column-count appender) i)
-                       (duckdb-api:duckdb-appender-end-row handle)
-                       (error 'duckdb-error
-                              :database (database (connection appender))
-                              :appender appender
-                              :error-message
-                              (format nil error-message
-                                      i
-                                      (column-count appender)))))))
+    ;; Full buffers can also flush while a row is appended.
+    (with-all-float-traps-masked
+      (loop :with handle := (handle appender)
+            :for i :from 0
+            :for duckdb-type :in (types appender)
+            :for value :in values
+            :do (generate-append-value-dispatch)
+            :finally (if (eql (column-count appender) i)
+                         (duckdb-api:duckdb-appender-end-row handle)
+                         (error 'duckdb-error
+                                :database (database (connection appender))
+                                :appender appender
+                                :error-message
+                                (format nil error-message
+                                        i
+                                        (column-count appender))))))))
 
 (defmacro with-static-table ((table-name columns) &body body)
   (alexandria:with-gensyms (table-id)

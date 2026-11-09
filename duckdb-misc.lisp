@@ -2,6 +2,15 @@
 
 (in-package #:duckdb)
 
+(defmacro with-all-float-traps-masked (&rest body)
+  `(float-features:with-float-traps-masked (:underflow
+                                            :overflow
+                                            :inexact
+                                            :invalid
+                                            :divide-by-zero
+                                            :denormalized-operand)
+     ,@body))
+
 (defun concat (&rest args)
   "Concatenate arguments into a string."
   (apply #'concatenate 'string args))

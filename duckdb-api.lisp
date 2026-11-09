@@ -1080,8 +1080,12 @@
            (loop :for i :below n
                  :collect (bt2:make-thread
                            (lambda ()
-                             (duckdb-execute-tasks-state task-state))
-                           :name (format nil "DuckDB worker thread #~a" i)))))
+                             (duckdb::with-all-float-traps-masked
+                               (duckdb-execute-tasks-state task-state)))
+                           :name (format nil "DuckDB worker thread #~a" i)
+                           ;; Unwind before Bordeaux Threads records conditions;
+                           ;; its handler-bind path can recursively lock on ECL.
+                           :trap-conditions t))))
     (make-instance 'worker-pool :task-state task-state :worker-threads worker-threads)))
 
 (defun stop-worker-pool (pool)
@@ -1093,4 +1097,3 @@
             :when (bt2:thread-alive-p worker-thread)
               :do (bt2:join-thread worker-thread)
             :finally (duckdb-destroy-task-state task-state)))))
-

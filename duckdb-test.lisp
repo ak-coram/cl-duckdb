@@ -525,6 +525,18 @@
   (test-append "float" '(3.14s0))
   (test-append "double" '(2.71d0)))
 
+(test append-float-batch
+  ;; Exceed DuckDB's appender buffer to exercise automatic and final flushes.
+  (ddb:with-transient-connection
+    (ddb:run "CREATE TABLE test (f FLOAT, d DOUBLE)")
+    (ddb:with-appender (appender "test")
+      (dotimes (i 250000)
+        (ddb:append-row appender '(3.14s0 2.71d0))))
+    (let ((results (ddb:q "SELECT COUNT(*) AS count, MIN(f) AS f, MAX(d) AS d FROM test")))
+      (is (= 250000 (ddb:get-result results 'count 0)))
+      (is (eql 3.14s0 (ddb:get-result results 'f 0)))
+      (is (eql 2.71d0 (ddb:get-result results 'd 0))))))
+
 (test append-decimal
   (test-append "DECIMAL(38,38)"
       (list (/ 33333333333333333333333333333333333333
